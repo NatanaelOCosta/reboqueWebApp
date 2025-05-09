@@ -223,19 +223,6 @@ async function buscarEnderecoDestino() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const whatsappSolicitarBtn = document.getElementById('whatsapp-solicitar-btn');
-    const cepOrigemInput = document.getElementById('cep-origem');
-    const origemInput = document.getElementById('origem');
-    const numeroOrigemInput = document.getElementById('numero-origem');
-    const cepDestinoInput = document.getElementById('cep-destino');
-    const destinoInput = document.getElementById('destino');
-    const numeroDestinoInput = document.getElementById('numero-destino');
-    const tipoSelect = document.getElementById('tipo');
-    const marcaMotoInput = document.getElementById('marca-moto');
-    const modeloMotoInput = document.getElementById('modelo-moto');
-    const cilindradaMotoInput = document.getElementById('cilindrada-moto');
-
     whatsappSolicitarBtn.addEventListener('click', function() {
         const cepOrigem = encodeURIComponent(cepOrigemInput.value);
         const ruaOrigem = encodeURIComponent(origemInput.value);
@@ -248,18 +235,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const modeloMoto = encodeURIComponent(modeloMotoInput.value);
         const cilindradaMoto = encodeURIComponent(cilindradaMotoInput.value);
 
-        let mensagemWhatsApp = Olá! Gostaria de solicitar um reboque com as seguintes informações:%0A%0ALocal do Veículo:%0ACEP: ${cepOrigem}%0AEndereço: ${ruaOrigem}${numeroOrigem ? ', ' + numeroOrigem : ''}%0A%0ADestino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}${numeroDestino ? ', ' + numeroDestino : ''}%0A%0ATipo de Veículo: ${tipo};
+        let mensagemWhatsApp = `Olá! Gostaria de solicitar um reboque com as seguintes informações:%0A%0A` +
+                               `Local do Veículo:%0ACEP: ${cepOrigem}%0AEndereço: ${ruaOrigem}${numeroOrigem ? ', ' + numeroOrigem : ''}%0A%0A` +
+                               `Destino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}${numeroDestino ? ', ' + numeroDestino : ''}%0A%0A` +
+                               `Tipo de Veículo: ${tipo}`;
 
         if (tipoSelect.value === "15") {
-            mensagemWhatsApp += %0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto};
+            mensagemWhatsApp += `%0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto}`;
         }
 
         const numeroWhatsApp = '21986669453';
-        const linkWhatsApp = https://wa.me/${numeroWhatsApp}?text=${mensagemWhatsApp};
+        const linkWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${mensagemWhatsApp}`;
 
         window.open(linkWhatsApp, '_blank');
     });
-});
 
 document.getElementById("btn-buscar-origem").addEventListener("click", buscarEnderecoOrigem);
 document.getElementById("btn-buscar-destino").addEventListener("click", buscarEnderecoDestino);
