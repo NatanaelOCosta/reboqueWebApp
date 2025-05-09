@@ -202,3 +202,18 @@ button:focus {
     outline: none;
     box-shadow: 0 0 5px rgba(26, 115, 232, 0.5);
 }
+
+.footer {
+    text-align: center;
+    padding: 20px 10px;
+    font-size: 0.95rem;
+    color: #777;
+    border-top: 1px solid #ddd;
+    margin-top: 40px;
+    background-color: #f9f9f9;
+    border-radius: 0 0 12px 12px;
+}
+
+.footer strong {
+    color: #1a73e8;
+}
