@@ -109,6 +109,10 @@ button:focus {
     outline: none;
 }
 
+.button-buscar {
+    margin-bottom: 15px;
+}
+
 #resultado {
     font-weight: 700;
     white-space: pre-line;
