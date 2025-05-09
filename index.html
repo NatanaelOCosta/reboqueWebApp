@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calculadora de Reboque</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <main class="container">
+        <img src="imagens/logo.png" alt="Logo da Gbservice Reboque">
+
+        <div id="mensagem-erro" class="mensagem-erro" style="display: none; color: red; margin-bottom: 10px; padding: 10px; border: 1px solid red; background-color: #ffe0e0;"></div>
+
+        <section class="section endereco-section">
+            <h2>Local do Veículo</h2>
+            <div class="form-group">
+                <label for="cep-origem">CEP:</label>
+                <input type="text" id="cep-origem" placeholder="Digite o CEP de onde o veículo está" maxlength="8" autocomplete="postal-code" />
+            </div>
+            <div class="form-group">
+                <label for="numero-origem">Número:</label>
+                <input type="number" class="number-label" id="numero-origem" placeholder="Número" autocomplete="address-level1" />
+            </div>
+            <button type="button" onclick="buscarEnderecoOrigem()">Buscar Endereço</button>
+            <div class="form-group">
+                <label for="origem">Endereço completo:</label>
+                <input disabled type="text" id="origem" placeholder="Endereço gerado automaticamente" autocomplete="street-address" />
+            </div>
+        </section>
+
+        <section class="section destino-section">
+            <h2>Destino do Reboque</h2>
+            <div class="form-group">
+                <label for="cep-destino">CEP:</label>
+                <input type="text" id="cep-destino" placeholder="Digite o CEP da rua de destino" maxlength="8" autocomplete="postal-code" />
+            </div>
+            <div class="form-group">
+                <label for="numero-destino">Número:</label>
+                <input type="number" class="number-label" id="numero-destino" placeholder="Número" autocomplete="address-level1" />
+            </div>
+            <button type="button" onclick="buscarEnderecoDestino()">Buscar Endereço</button>
+            <div class="form-group">
+                <label for="destino">Endereço de destino completo:</label>
+                <input disabled type="text" id="destino" placeholder="Endereço gerado automaticamente" autocomplete="address-line1" />
+            </div>
+            <div class="form-group">
+                <label for="tipo">Tipo de Veículo:</label>
+                <select id="tipo" aria-label="Tipo de veículo">
+                    <option value="" disabled selected>Selecione</option>
+                    <option value="50">Carro 🚗</option>
+                    <option value="15">Moto 🏍️</option>
+                </select>
+            </div>
+            <div id="detalhes-moto" style="display: none;">
+                <div class="form-group">
+                    <label for="marca-moto">Marca:</label>
+                    <input type="text" id="marca-moto" placeholder="Ex.: Honda" />
+                </div>
+                <div class="form-group">
+                    <label for="modelo-moto">Modelo:</label>
+                    <input type="text" id="modelo-moto" placeholder="Ex.: CG Titan" />
+                </div>
+                <div class="form-group">
+                    <label for="cilindrada-moto">Cilindrada:</label>
+                    <input type="number" class="number-label" id="cilindrada-moto" placeholder="Ex.: 160" />
+                </div>
+            </div>
+        </section>
+
+        <section class="section acao-section">
+            <button id="calcular-btn" type="button" onclick="calcular()">Calcular valor</button>
+        </section>
+
+        <section class="section resultado-section" aria-live="polite" aria-atomic="true">
+            <div id="resultado"></div>
+        </section>
+
+        <section class="section whatsapp-section">
+            <button id="whatsapp-solicitar-btn" class="whatsapp-button">Solicitar reboque via WhatsApp</button>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
