@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const cilindradaMoto = encodeURIComponent(cilindradaMotoInput.value);
 
     let mensagemWhatsApp = `Olá! Gostaria de solicitar um reboque!%0A%0A` +
-      `Local do Veículo:%0ACEP: ${cepOrigem}%0AEndereço: ${ruaOrigem}${numeroOrigem ? : ''}%0A%0A` +
+      `Local do Veículo:%0ACEP: ${cepOrigem}%0AEndereço: ${ruaOrigem}${numeroOrigem ? ', ' + numeroOrigem : ''}%0A%0A` +
       `Destino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}${numeroDestino ? ', ' + numeroDestino : ''}%0A%0A` +
       `Tipo de Veículo: ${tipo}`;
 
