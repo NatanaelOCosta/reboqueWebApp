@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
       mensagemWhatsApp += `%0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto}`;
     }
 
-    const numeroWhatsApp = '21986669453';
+    const numeroWhatsApp = '552141014470';
     const linkWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${mensagemWhatsApp}`;
 
     window.open(linkWhatsApp, '_blank');
