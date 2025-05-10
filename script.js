@@ -83,6 +83,8 @@ async function rota(pontoA, pontoB) {
   return data.routes[0].summary.distance / 1000; // em km
 }
 
+let valorTotal = 0;
+
 async function calcular() {
   const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
   const numeroOrigem = document.getElementById("numero-origem").value;
@@ -253,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
       `Destino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}%0A%0A` +
       `Tipo de Veículo: ${tipo}%0A%0A` +
       `Valor Estimado: R$ ${valorTotal ? valorTotal.toFixed(2) : '0,00'}`;
+      
 
     if (tipoSelect.value === "15") {
       mensagemWhatsApp += `%0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto}`;
