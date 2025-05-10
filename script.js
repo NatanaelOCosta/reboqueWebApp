@@ -192,12 +192,12 @@ document.getElementById("tipo").addEventListener("change", function () {
   detalhesMoto.style.display = tipo === "15" ? "block" : "none";
 });
 
-function abrirWhatsApp() {
+/*function abrirWhatsApp() {
   const mensagem = document.getElementById("resultado").innerText;
   const numero = "5521999999999"; // Substitua pelo número real com DDI
   const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
   window.open(url, "_blank");
-}
+}*/
 
 async function buscarEnderecoOrigem() {
   const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
@@ -270,4 +270,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
 document.getElementById("btn-buscar-origem").addEventListener("click", buscarEnderecoOrigem);
 document.getElementById("btn-buscar-destino").addEventListener("click", buscarEnderecoDestino);
-document.getElementById("btn-whatsapp").addEventListener("click", abrirWhatsApp);
+//document.getElementById("btn-whatsapp").addEventListener("click", abrirWhatsApp);
