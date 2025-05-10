@@ -3,20 +3,17 @@ const enderecoBase = "R. Dom João VI, 6 - Santa Cruz, Rio de Janeiro - RJ";
 
 async function buscarEnderecoPorCEP(cep, numero) {
   const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-
   if (!response.ok) {
     throw new Error("Erro ao buscar endereço: " + response.statusText);
   }
 
   const data = await response.json();
-
   if (data.erro) {
     throw new Error("CEP não encontrado.");
   }
 
   const enderecoCompleto = `${data.logradouro}, ${numero} - ${data.bairro}, ${data.localidade} - ${data.uf}`;
   const valido = await validarEndereco(enderecoCompleto);
-
   if (!valido) {
     throw new Error("Endereço inválido ou fora do Brasil.");
   }
@@ -28,7 +25,6 @@ async function validarEndereco(enderecoCompleto) {
   try {
     const coords = await geocode(enderecoCompleto);
     if (!coords) return false;
-
     const [lon, lat] = coords;
     return lat < 6 && lat > -35 && lon >= -75 && lon <= -34;
   } catch (error) {
@@ -63,7 +59,7 @@ async function rota(pontoA, pontoB) {
     {
       method: "POST",
       headers: {
-        Authorization: API_KEY,
+        Authorization: `Bearer ${API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -94,6 +90,7 @@ async function calcular() {
   let enderecoOrigemCompleto = "";
   let enderecoDestinoCompleto = "";
 
+  // Busca e validação de endereço de origem
   try {
     enderecoOrigemCompleto = await buscarEnderecoPorCEP(cepOrigem, numeroOrigem);
     document.getElementById("origem").value = enderecoOrigemCompleto;
@@ -103,6 +100,7 @@ async function calcular() {
     return;
   }
 
+  // Busca e validação de endereço de destino
   try {
     enderecoDestinoCompleto = await buscarEnderecoPorCEP(cepDestino, numeroDestino);
     document.getElementById("destino").value = enderecoDestinoCompleto;
@@ -112,6 +110,7 @@ async function calcular() {
     return;
   }
 
+  // Validação do tipo de veículo e cálculo de taxa
   const tipoVeiculo = document.getElementById("tipo").value;
   let taxa = 0;
 
@@ -146,6 +145,7 @@ async function calcular() {
 
   document.getElementById("resultado").innerText = "Calculando...";
 
+  // Calcula as coordenadas para as rotas
   try {
     const coordBase = await geocode(enderecoBase);
     const coordOrigem = await geocode(enderecoOrigemCompleto);
@@ -192,82 +192,34 @@ document.getElementById("tipo").addEventListener("change", function () {
   detalhesMoto.style.display = tipo === "15" ? "block" : "none";
 });
 
-/*function abrirWhatsApp() {
-  const mensagem = document.getElementById("resultado").innerText;
-  const numero = "5521999999999"; // Substitua pelo número real com DDI
-  const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-  window.open(url, "_blank");
-}*/
+// Função para enviar mensagem via WhatsApp
+async function enviarMensagemWhatsApp() {
+  const cepOrigem = encodeURIComponent(document.getElementById("cep-origem").value);
+  const ruaOrigem = encodeURIComponent(document.getElementById("origem").value);
+  const numeroOrigem = encodeURIComponent(document.getElementById("numero-origem").value);
+  const cepDestino = encodeURIComponent(document.getElementById("cep-destino").value);
+  const ruaDestino = encodeURIComponent(document.getElementById("destino").value);
+  const numeroDestino = encodeURIComponent(document.getElementById("numero-destino").value);
+  const tipo = encodeURIComponent(document.getElementById("tipo").options[document.getElementById("tipo").selectedIndex].text);
+  const marcaMoto = encodeURIComponent(document.getElementById("marca-moto").value);
+  const modeloMoto = encodeURIComponent(document.getElementById("modelo-moto").value);
+  const cilindradaMoto = encodeURIComponent(document.getElementById("cilindrada-moto").value);
 
-async function buscarEnderecoOrigem() {
-  const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
-  const numero = document.getElementById("numero-origem").value;
+  let mensagemWhatsApp = `Olá! Gostaria de solicitar um reboque!%0A%0A` +
+    `Local do Veículo:%0ACEP: ${cepOrigem}%0AEndereço: ${ruaOrigem}%0A%0A` +
+    `Destino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}%0A%0A` +
+    `Tipo de Veículo: ${tipo}%0A%0A` +
+    `Valor Estimado: R$ ${valorTotal ? valorTotal.toFixed(2) : '0,00'}`;
 
-  try {
-    const endereco = await buscarEnderecoPorCEP(cep, numero);
-    document.getElementById("origem").value = endereco;
-    limparMensagemErro();
-  } catch (e) {
-    mostrarMensagemErro("Erro com endereço de origem: " + e.message);
+  if (tipo === "15") {
+    mensagemWhatsApp += `%0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto}`;
   }
+
+  const numeroWhatsApp = '552141014470';
+  const linkWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${mensagemWhatsApp}`;
+  window.open(linkWhatsApp, '_blank');
 }
-
-async function buscarEnderecoDestino() {
-  const cep = document.getElementById("cep-destino").value.replace(/\D/g, "");
-  const numero = document.getElementById("numero-destino").value;
-
-  try {
-    const endereco = await buscarEnderecoPorCEP(cep, numero);
-    document.getElementById("destino").value = endereco;
-    limparMensagemErro();
-  } catch (e) {
-    mostrarMensagemErro("Erro com endereço de destino: " + e.message);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  const whatsappSolicitarBtn = document.getElementById('whatsapp-solicitar-btn');
-  const cepOrigemInput = document.getElementById('cep-origem');
-  const origemInput = document.getElementById('origem');
-  const numeroOrigemInput = document.getElementById('numero-origem');
-  const cepDestinoInput = document.getElementById('cep-destino');
-  const destinoInput = document.getElementById('destino');
-  const numeroDestinoInput = document.getElementById('numero-destino');
-  const tipoSelect = document.getElementById('tipo');
-  const marcaMotoInput = document.getElementById('marca-moto');
-  const modeloMotoInput = document.getElementById('modelo-moto');
-  const cilindradaMotoInput = document.getElementById('cilindrada-moto');
-
-  whatsappSolicitarBtn.addEventListener('click', function() {
-    const cepOrigem = encodeURIComponent(cepOrigemInput.value);
-    const ruaOrigem = encodeURIComponent(origemInput.value);
-    const numeroOrigem = encodeURIComponent(numeroOrigemInput.value);
-    const cepDestino = encodeURIComponent(cepDestinoInput.value);
-    const ruaDestino = encodeURIComponent(destinoInput.value);
-    const numeroDestino = encodeURIComponent(numeroDestinoInput.value);
-    const tipo = encodeURIComponent(tipoSelect.options[tipoSelect.selectedIndex].text);
-    const marcaMoto = encodeURIComponent(marcaMotoInput.value);
-    const modeloMoto = encodeURIComponent(modeloMotoInput.value);
-    const cilindradaMoto = encodeURIComponent(cilindradaMotoInput.value);
-
-    let mensagemWhatsApp = `Olá! Gostaria de solicitar um reboque!%0A%0A` +
-      `Local do Veículo:%0ACEP: ${cepOrigem}%0AEndereço: ${ruaOrigem}%0A%0A` +
-      `Destino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}%0A%0A` +
-      `Tipo de Veículo: ${tipo}%0A%0A` +
-      `Valor Estimado: R$ ${valorTotal ? valorTotal.toFixed(2) : '0,00'}`;
-      
-
-    if (tipoSelect.value === "15") {
-      mensagemWhatsApp += `%0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto}`;
-    }
-
-    const numeroWhatsApp = '552141014470';
-    const linkWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${mensagemWhatsApp}`;
-
-    window.open(linkWhatsApp, '_blank');
-  });
-});
 
 document.getElementById("btn-buscar-origem").addEventListener("click", buscarEnderecoOrigem);
 document.getElementById("btn-buscar-destino").addEventListener("click", buscarEnderecoDestino);
-//document.getElementById("btn-whatsapp").addEventListener("click", abrirWhatsApp);
+document.getElementById("whatsapp-solicitar-btn").addEventListener("click", enviarMensagemWhatsApp);
