@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
       `Local do Veículo:%0ACEP: ${cepOrigem}%0AEndereço: ${ruaOrigem}%0A%0A` +
       `Destino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}%0A%0A` +
       `Tipo de Veículo: ${tipo}%0A%0A` +
-      `Valor Estimado: R$ ${valorTotal.toFixed(2)}`;
+      `Valor Estimado: R$ ${valorTotal ? valorTotal.toFixed(2) : '0,00'}`;
 
     if (tipoSelect.value === "15") {
       mensagemWhatsApp += `%0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto}`;
