@@ -4,16 +4,595 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Calculadora de Reboque</title>
-    <link rel="stylesheet" href="styles.css" />
+    <!-- O CSS do usuário foi movido para o bloco <style> -->
+    <style>
+        /* Reset básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            max-width: 600px;
+            width: 100%;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #444;
+            border-bottom: 2px solid #1a73e8;
+            padding-bottom: 5px;
+        }
+
+        /* Formulário */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+
+        label {
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #555;
+            user-select: none;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            outline-offset: 0;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            border-color: #1a73e8;
+            outline: none;
+            box-shadow: 0 0 5px rgba(26, 115, 232, 0.5);
+        }
+
+        /* Botão */
+        button {
+            cursor: pointer;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            font-weight: 700;
+            width: 100%;
+            transition: background-color 0.3s ease;
+            user-select: none;
+        }
+
+        button:hover,
+        button:focus {
+            background: #155ab6;
+            outline: none;
+        }
+
+        .button-buscar {
+            margin-bottom: 15px;
+        }
+
+        #resultado {
+            font-weight: 700;
+            white-space: pre-line;
+            font-size: 1.1rem;
+            padding: 15px 20px;
+            background: #e1f0ff;
+            border-radius: 8px;
+            border: 1px solid #7ab8ff;
+            min-height: 60px;
+            color: #0d47a1;
+        }
+        
+        #mensagem-erro {
+            color: red; 
+            margin-bottom: 10px; 
+            padding: 10px; 
+            border: 1px solid red; 
+            background-color: #ffe0e0;
+            border-radius: 8px;
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            .title {
+                font-size: 1.5rem;
+            }
+
+            input[type="text"],
+            input[type="number"],
+            select,
+            button {
+                font-size: 1rem;
+                padding: 10px 12px;
+            }
+        }
+
+        .whatsapp-button {
+            background-color: #25D366; /* Cor verde do WhatsApp */
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            font-weight: 700;
+            width: 100%;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            user-select: none;
+        }
+
+        .whatsapp-button:hover,
+        .whatsapp-button:focus {
+            background-color: #128C7E;
+            outline: none;
+        }
+
+        #detalhes-moto {
+            margin-top: 15px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        #detalhes-moto .form-group {
+            margin-bottom: 10px;
+        }
+
+        .number-label {
+            /* Ajuste para que o número ocupe o espaço disponível sem quebrar o layout */
+            width: 100%; 
+        }
+        
+        /* Ajuste para o campo de número no layout flexível */
+        .endereco-section .form-group:nth-child(2) input[type="number"], 
+        .destino-section .form-group:nth-child(2) input[type="number"] {
+            width: 100%;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 10px;
+            font-size: 0.95rem;
+            color: #777;
+            border-top: 1px solid #ddd;
+            margin-top: 40px;
+            background-color: #f9f9f9;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .footer strong {
+            color: #1a73e8;
+        }
+        .logo-placeholder {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1a73e8;
+            margin-bottom: 20px;
+        }
+    </style>
+    <script>
+        // Configurações e Funções do JS
+        const API_KEY = "5b3ce3597851110001cf62489e24024317f24032483d474b971a0694"; 
+        const enderecoBase = "R. Dom João VI, 6 - Santa Cruz, Rio de Janeiro - RJ";
+        const WHATSAPP_NUMBER = "5521999999999"; // Substitua pelo número real
+
+        // --- FUNÇÕES DE ROBUSTEZ DE REDE ---
+        
+        // Função utilitária para pausar a execução
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        /**
+         * Realiza um fetch com tentativas e exponencial backoff para lidar com falhas de rede temporárias.
+         */
+        async function retryFetch(url, options = {}, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    
+                    if (response.ok) {
+                        return response;
+                    }
+                    
+                    // Se não for OK e for a última tentativa, lance um erro de status
+                    if (i === maxRetries - 1) {
+                        throw new Error(`Falha na requisição após ${maxRetries} tentativas. Status: ${response.status} ${response.statusText}`);
+                    }
+
+                } catch (error) {
+                    // Captura NetworkError (falha de conexão, CORS, etc.)
+                    console.error(`Tentativa ${i + 1} falhou (Erro de Rede/Conexão):`, error.message);
+                    if (i === maxRetries - 1) {
+                        // Lança um erro final para a camada de visualização
+                        throw new Error("Falha na requisição de rede após múltiplas tentativas. Verifique sua conexão ou tente novamente mais tarde.");
+                    }
+                }
+                
+                // Exponencial backoff: 1s, 2s, 4s...
+                const delay = Math.pow(2, i) * 1000; 
+                console.log(`Aguardando ${delay / 1000}s antes de tentar novamente...`);
+                await sleep(delay);
+            }
+        }
+        // -------------------------------------
+        
+        /**
+         * Aplica um pequeno deslocamento (jitter) nas coordenadas para forçar o cálculo de rota.
+         */
+        function applyJitter(coords) {
+            const [lon, lat] = coords;
+            return [lon, lat + 0.000001]; 
+        }
+
+        async function buscarEnderecoPorCEP(cep, numero) {
+            limparMensagemErro(); 
+
+            // USANDO retryFetch para ViaCEP
+            const response = await retryFetch(`https://viacep.com.br/ws/${cep}/json/`);
+            
+            const data = await response.json();
+            if (data.erro) throw new Error("CEP não encontrado.");
+
+            const enderecoCompleto = `${data.logradouro}, ${numero} - ${data.bairro}, ${data.localidade} - ${data.uf}`;
+            const valido = await validarEndereco(enderecoCompleto);
+            if (!valido) throw new Error("Endereço inválido ou fora do Brasil (apenas Brasil é suportado).");
+            return enderecoCompleto;
+        }
+
+        async function validarEndereco(enderecoCompleto) {
+            try {
+                // Apenas verifica se o geocode retorna algo válido.
+                const coords = await geocode(enderecoCompleto);
+                if (!coords) return false;
+                const [lon, lat] = coords;
+                
+                // Validação de latitude/longitude para o Brasil (relaxada).
+                return lat <= 7 && lat >= -36 && lon >= -76 && lon <= -33;
+            } catch (e) {
+                // Se a geocodificação falhar após as tentativas de retry, a validação falha
+                console.error("Falha na validação do geocode:", e.message);
+                return false;
+            }
+        }
+
+        async function geocode(endereco) {
+            const url = `https://api.openrouteservice.org/geocode/search?api_key=${API_KEY}&text=${encodeURIComponent(endereco)}`;
+            
+            // USANDO retryFetch para Geocoding
+            const response = await retryFetch(url);
+
+            const data = await response.json();
+            if (!data.features?.length) throw new Error("Endereço não encontrado.");
+
+            const coords = data.features[0].geometry?.coordinates;
+            if (!coords || coords.length !== 2) throw new Error("Coordenadas inválidas.");
+            return coords; // [lon, lat]
+        }
+
+        async function rota(pontoA, pontoB) {
+            if (!Array.isArray(pontoA) || !Array.isArray(pontoB)) throw new Error("Coordenadas inválidas.");
+
+            const body = { coordinates: [pontoA, pontoB] };
+            const profile = "driving-car"; 
+            const url = `https://api.openrouteservice.org/v2/directions/${profile}`;
+
+            const options = {
+                method: "POST",
+                headers: { Authorization: API_KEY, "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            };
+
+            // USANDO retryFetch para o cálculo da Rota
+            const response = await retryFetch(url, options);
+
+            const data = await response.json();
+            const distancia = data?.routes?.[0]?.summary?.distance;
+            
+            if (!distancia || isNaN(distancia)) {
+                const erroNaResposta = data.error?.message || "Estrutura de resposta inesperada ou rota não encontrada.";
+                console.error(`[DEBUG COORDS] Falha na rota entre: ${JSON.stringify(pontoA)} e ${JSON.stringify(pontoB)}`);
+                throw new Error(`Erro rota: Rota não encontrada. Tente endereços mais precisos ou diferentes. Detalhe: ${erroNaResposta}`);
+            }
+
+            return distancia / 1000; // km
+        }
+        
+        /**
+         * Tenta calcular a rota com segurança, aplicando fallback em caso de colapso de coordenadas.
+         */
+        async function safeRota(pontoA, pontoB, isJittered) {
+            const MIN_SAFE_DISTANCE_KM = 0.2; 
+            
+            try {
+                const distance = await rota(pontoA, pontoB);
+                
+                if (isJittered && distance < 0.001) { 
+                    console.warn("Distância calculada foi zero/quase zero mesmo com Jitter. Aplicando fallback.");
+                    return { distance: MIN_SAFE_DISTANCE_KM, fallback: true };
+                }
+                
+                return { distance, fallback: false };
+            } catch (error) {
+                // Se a rota falhou (mesmo com retry), aplica o fallback
+                console.warn(`[DEBUG] Rota falhou. Aplicando fallback para evitar travamento. Erro: ${error.message}`);
+                return { distance: MIN_SAFE_DISTANCE_KM, fallback: true };
+            }
+        }
+
+
+        let valorTotal = 0;
+        
+        const coordsString = (coords) => `[Lon: ${coords[0].toFixed(5)}, Lat: ${coords[1].toFixed(5)}]`;
+
+
+        async function calcular() {
+            limparMensagemErro(); 
+            
+            let enderecoOrigemCompleto;
+            let enderecoDestinoCompleto;
+            let tipoVeiculo;
+            let cilindrada = 0; 
+
+            try {
+                document.getElementById("resultado").innerText = "Calculando...";
+                
+                tipoVeiculo = document.getElementById("tipo").value;
+                if (!tipoVeiculo) throw new Error("Selecione o tipo de veículo.");
+
+                const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
+                const numeroOrigem = document.getElementById("numero-origem").value;
+                enderecoOrigemCompleto = document.getElementById("origem").value; 
+
+                const cepDestino = document.getElementById("cep-destino").value.replace(/\D/g, "");
+                const numeroDestino = document.getElementById("numero-destino").value;
+                enderecoDestinoCompleto = document.getElementById("destino").value; 
+
+
+                if (!enderecoOrigemCompleto) throw new Error("Busque o endereço de Origem primeiro.");
+                if (!enderecoDestinoCompleto) throw new Error("Busque o endereço de Destino primeiro.");
+
+                if (tipoVeiculo === "15") {
+                    cilindrada = parseInt(document.getElementById("cilindrada-moto").value);
+                    if (isNaN(cilindrada)) throw new Error("Informe a cilindrada da moto.");
+                }
+                
+                console.log("[DEBUG TEST] Modo de fluxo normal ativado.");
+
+                
+                // Calcular Taxa Fixa 
+                let taxa = 0;
+
+                if (tipoVeiculo === "50") taxa = 50;
+                else if (tipoVeiculo === "15") {
+                    if (cilindrada <= 160) taxa = 15;
+                    else if (cilindrada <= 250) taxa = 25;
+                    else if (cilindrada <= 499) taxa = 35;
+                    else if (cilindrada <= 999) taxa = 50;
+                    else taxa = 100;
+                }
+
+                // Geocodificar Coordenadas (em paralelo)
+                const geocodeQueryOrigem = `${enderecoOrigemCompleto}, Número ${numeroOrigem}, CEP ${cepOrigem}`;
+                const geocodeQueryDestino = `${enderecoDestinoCompleto}, Número ${numeroDestino}, CEP ${cepDestino}`;
+                
+                const [coordBase, coordOrigem, coordDestino] = await Promise.all([
+                    geocode(enderecoBase),
+                    geocode(geocodeQueryOrigem),
+                    geocode(geocodeQueryDestino),
+                ]);
+                
+                console.log(`[COORD DEBUG] Base Coords: ${coordsString(coordBase)}`);
+                console.log(`[COORD DEBUG] Origem Coords: ${coordsString(coordOrigem)}`);
+                console.log(`[COORD DEBUG] Destino Coords: ${coordsString(coordDestino)}`);
+
+                // MONTAR PARES DE ROTA COM JITTER SELETIVO
+                let baseToOrigem = [coordBase, coordOrigem];
+                let origemToDestino = [coordOrigem, coordDestino];
+                let destinoToBase = [coordDestino, coordBase];
+                let jitterApplied = { 1: false, 2: false, 3: false };
+
+                if (JSON.stringify(coordBase) === JSON.stringify(coordOrigem)) {
+                    baseToOrigem = [coordBase, applyJitter(coordOrigem)];
+                    jitterApplied[1] = true;
+                }
+
+                if (JSON.stringify(coordOrigem) === JSON.stringify(coordDestino)) {
+                    origemToDestino = [coordOrigem, applyJitter(coordDestino)];
+                    jitterApplied[2] = true;
+                }
+
+                if (JSON.stringify(coordDestino) === JSON.stringify(coordBase)) {
+                    destinoToBase = [coordDestino, applyJitter(coordBase)];
+                    jitterApplied[3] = true;
+                }
+
+                // Calcular Rotas (em paralelo) usando safeRota
+                const promiseDist1 = safeRota(baseToOrigem[0], baseToOrigem[1], jitterApplied[1]);
+                const promiseDist2 = safeRota(origemToDestino[0], origemToDestino[1], jitterApplied[2]);
+                const promiseDist3 = safeRota(destinoToBase[0], destinoToBase[1], jitterApplied[3]);
+
+                const [res1, res2, res3] = await Promise.all([
+                    promiseDist1,
+                    promiseDist2,
+                    promiseDist3,
+                ]);
+                
+                const dist1 = res1.distance;
+                const dist2 = res2.distance;
+                const dist3 = res3.distance;
+                
+                console.log(`[DIST DEBUG] Distância 1 (Base->Origem): ${dist1.toFixed(2)} km. Fallback: ${res1.fallback}`);
+                console.log(`[DIST DEBUG] Distância 2 (Origem->Destino): ${dist2.toFixed(2)} km. Fallback: ${res2.fallback}`);
+                console.log(`[DIST DEBUG] Distância 3 (Destino->Base): ${dist3.toFixed(2)} km. Fallback: ${res3.fallback}`);
+
+                const fallback1 = res1.fallback;
+                const fallback2 = res2.fallback;
+                const fallback3 = res3.fallback;
+
+                // Apresentar Resultado
+                const distanciaTotalKm = dist1 + dist2 + dist3;
+                const valorKm = distanciaTotalKm * 1.7; // R$ 1,70 por km
+                valorTotal = valorKm + taxa;
+                
+                const detalhesMoto = tipoVeiculo === "15" ? 
+                    ` (Cilindrada: ${document.getElementById("cilindrada-moto").value}cc)` : '';
+                
+                const notaFallback = "(Distância mínima de 0.2 km forçada para evitar falha na rota)";
+                const textoDist1 = `Base → Origem: ${dist1.toFixed(2)} km${fallback1 ? ` ${notaFallback}` : ''}`;
+                const textoDist2 = `Origem → Destino: ${dist2.toFixed(2)} km${fallback2 ? ` ${notaFallback}` : ''}`;
+                const textoDist3 = `Destino → Base: ${dist3.toFixed(2)} km${fallback3 ? ` ${notaFallback}` : ''}`;
+                
+                document.getElementById("resultado").innerText =
+                    `📍 Coordenadas Utilizadas:\n` +
+                    `Base: ${coordsString(coordBase)}\n` +
+                    `Origem: ${coordsString(coordOrigem)}\n` +
+                    `Destino: ${coordsString(coordDestino)}\n\n` +
+                    `Detalhes da Rota:\n` +
+                    `${textoDist1}\n` +
+                    `${textoDist2}\n` +
+                    `${textoDist3}\n\n` +
+                    `Distância Total (ida e volta): ${distanciaTotalKm.toFixed(2)} km\n` +
+                    `Custo por KM (R$ 1,70/km): R$ ${valorKm.toFixed(2)}\n` +
+                    `Taxa Fixa (Veículo: ${tipoVeiculo === '50' ? 'Carro' : 'Moto'}${detalhesMoto}): R$ ${taxa.toFixed(2)}\n` +
+                    `\n💰 VALOR TOTAL ESTIMADO: R$ ${valorTotal.toFixed(2)}`;
+                
+                updateWhatsappButton(enderecoOrigemCompleto, enderecoDestinoCompleto, valorTotal);
+                
+            } catch (error) {
+                console.error("Erro no cálculo:", error);
+                // Mensagem de erro foi melhorada para incluir o erro de rede/status
+                mostrarMensagemErro(`❌ Erro: ${error.message}. Tente buscar o endereço novamente.`); 
+                document.getElementById("resultado").innerText = "❌ Erro no cálculo. Verifique os dados.";
+                document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
+            }
+        }
+
+        function mostrarMensagemErro(msg) {
+            const div = document.getElementById("mensagem-erro");
+            div.style.display = "block";
+            div.textContent = msg;
+        }
+
+        function limparMensagemErro() {
+            const div = document.getElementById("mensagem-erro");
+            div.style.display = "none";
+            div.textContent = "";
+        }
+
+        function updateWhatsappButton(origem, destino, valor) {
+            const btn = document.getElementById("whatsapp-solicitar-btn");
+            const msg = encodeURIComponent(
+                `Olá! Gostaria de solicitar um reboque.\n\n` +
+                `📍 Origem: ${origem}\n` +
+                `🏁 Destino: ${destino}\n\n` +
+                `💵 Valor estimado: R$ ${valor.toFixed(2)}\n\n` +
+                `Por favor, confirme a disponibilidade.`
+            );
+            btn.removeAttribute('disabled');
+            btn.onclick = () => {
+                window.open(`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${msg}`, '_blank');
+            };
+        }
+
+
+        window.onload = function() {
+            
+            async function buscarOrigem() {
+                limparMensagemErro();
+                const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
+                const numero = document.getElementById("numero-origem").value;
+                try {
+                    const end = await buscarEnderecoPorCEP(cep, numero);
+                    document.getElementById("origem").value = end;
+                } catch (e) {
+                    mostrarMensagemErro(e.message);
+                    document.getElementById("origem").value = "";
+                }
+            }
+
+            async function buscarDestino() {
+                limparMensagemErro();
+                const cep = document.getElementById("cep-destino").value.replace(/\D/g, "");
+                const numero = document.getElementById("numero-destino").value;
+                try {
+                    const end = await buscarEnderecoPorCEP(cep, numero);
+                    document.getElementById("destino").value = end;
+                } catch (e) {
+                    mostrarMensagemErro(e.message);
+                    document.getElementById("destino").value = "";
+                }
+            }
+
+            document.getElementById("btn-calcular").addEventListener("click", calcular);
+            document.getElementById("btn-buscar-origem").addEventListener("click", buscarOrigem);
+            document.getElementById("btn-buscar-destino").addEventListener("click", buscarDestino);
+
+            document.getElementById("tipo").addEventListener("change", e => {
+                const showMoto = e.target.value === "15";
+                document.getElementById("detalhes-moto").style.display = showMoto ? "block" : "none";
+                
+                if (!showMoto) {
+                    document.getElementById("marca-moto").value = "";
+                    document.getElementById("modelo-moto").value = "";
+                    document.getElementById("cilindrada-moto").value = "";
+                }
+            });
+            
+            document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
+        };
+    </script>
 </head>
 <body>
     <main class="container">
-        <img src="logo.png" alt="Logo da Gbservice Reboque">
+        <!-- Substituído o logo por um título simples -->
+        <h1 class="logo-placeholder">🚚 Gbservice Reboque</h1>
 
-        <div id="mensagem-erro" class="mensagem-erro" style="display: none; color: red; margin-bottom: 10px; padding: 10px; border: 1px solid red; background-color: #ffe0e0;"></div>
+        <!-- O elemento de erro foi corrigido para não ter o 'style' inline de display: none, pois ele é controlado pelo JS -->
+        <div id="mensagem-erro" class="mensagem-erro" style="display: none;"></div>
 
         <section class="section endereco-section">
-            <h2>Local do Veículo</h2>
+            <h2>Local do Veículo (Origem)</h2>
             <div class="form-group">
                 <label for="cep-origem">CEP:</label>
                 <input type="text" id="cep-origem" placeholder="Digite o CEP de onde o veículo está" maxlength="8" autocomplete="postal-code" />
@@ -22,7 +601,8 @@
                 <label for="numero-origem">Número:</label>
                 <input type="number" class="number-label" id="numero-origem" placeholder="Número" autocomplete="address-level1" />
             </div>
-            <button class="button-buscar" type="button" onclick="buscarEnderecoOrigem()">Buscar Endereço</button>
+            <!-- ID adicionado para o JS anexar o evento -->
+            <button id="btn-buscar-origem" type="button" class="button-buscar">Buscar Endereço</button>
             <div class="form-group">
                 <label for="origem">Endereço completo:</label>
                 <input disabled type="text" id="origem" placeholder="Endereço gerado automaticamente" autocomplete="street-address" />
@@ -39,7 +619,8 @@
                 <label for="numero-destino">Número:</label>
                 <input type="number" class="number-label" id="numero-destino" placeholder="Número" autocomplete="address-level1" />
             </div>
-            <button class="button-buscar" type="button" onclick="buscarEnderecoDestino()">Buscar Endereço</button>
+            <!-- ID adicionado para o JS anexar o evento -->
+            <button id="btn-buscar-destino" type="button" class="button-buscar">Buscar Endereço</button>
             <div class="form-group">
                 <label for="destino">Endereço de destino completo:</label>
                 <input disabled type="text" id="destino" placeholder="Endereço gerado automaticamente" autocomplete="address-line1" />
@@ -54,6 +635,7 @@
             </div>
             <div id="detalhes-moto" style="display: none;">
                 <div class="form-group">
+                    <!-- Marca e Modelo não são usados no cálculo, mas foram mantidos para coleta de dados -->
                     <label for="marca-moto">Marca:</label>
                     <input type="text" id="marca-moto" placeholder="Ex.: Honda" />
                 </div>
@@ -69,21 +651,20 @@
         </section>
 
         <section class="section acao-section">
-            <button id="calcular-btn" type="button" onclick="calcular()">Calcular valor</button>
+            <!-- ID alterado para consistência com o JS (calcular-btn -> btn-calcular) -->
+            <button id="btn-calcular" type="button">Calcular valor</button>
         </section>
 
         <section class="section resultado-section" aria-live="polite" aria-atomic="true">
-            <div id="resultado"></div>
+            <div id="resultado">Preencha todos os campos e clique em CALCULAR.</div>
         </section>
 
         <section class="section whatsapp-section">
-            <button id="whatsapp-solicitar-btn" class="whatsapp-button">Solicitar reboque via WhatsApp</button>
+            <button id="whatsapp-solicitar-btn" class="whatsapp-button" disabled>Solicitar reboque via WhatsApp</button>
         </section>
         <footer class="footer">
             <p>Desenvolvido por <strong>Natanael Costa</strong></p>
         </footer>
     </main>
-
-    <script src="script.js"></script>
 </body>
 </html>
