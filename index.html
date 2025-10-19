@@ -100,7 +100,7 @@
             outline: none;
         }
         
-        /* Estilização do Toggle de Escolha (CEP vs GEO) - Mantido para Origem */
+        /* Estilização do Toggle de Escolha (CEP vs GEO) */
         .input-toggle {
             margin-bottom: 20px;
             padding: 10px;
@@ -252,7 +252,6 @@
     <script>
         // =================================================================
         // ATENÇÃO: CHAVE DE API DO GOOGLE MAPS
-        // Esta é a chave que você inseriu. Mantenha-a segura.
         // =================================================================
         const API_KEY_GOOGLE = "AIzaSyBwd9QQquprtp9WM-M3KlzXe6rOKAy41Ns";
         
@@ -283,13 +282,15 @@
                     center: RIO_CENTER,
                     zoom: 10,
                     fullscreenControl: false,
-                    streetViewControl: false
+                    streetViewControl: false,
+                    // Ponto 2: 'greedy' prioriza a interação com o mapa sobre a rolagem da página (melhorando mobile)
+                    gestureHandling: 'greedy' 
                 });
 
                 // Marcador de Origem (Vermelho)
                 originMarker = new google.maps.Marker({
                     map: map,
-                    position: BASE_ADDRESS, // Inicia na base
+                    position: BASE_ADDRESS, 
                     icon: { 
                         url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png" 
                     }
@@ -298,7 +299,7 @@
                 // Marcador de Destino (Azul)
                 destinationMarker = new google.maps.Marker({
                     map: map,
-                    position: RIO_CENTER, // Posição inicial diferente
+                    position: RIO_CENTER, 
                     icon: { 
                         url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png" 
                     }
@@ -390,7 +391,7 @@
             // 2. Tentar geocodificar no Google Maps para validar
             const fullQuery = `${enderecoCompleto}, CEP ${cep}`;
             try {
-                // Apenas chama para validar, não usa o retorno aqui
+                // Apenas chama para validar
                 await geocodeAddress(fullQuery); 
             } catch (e) {
                 console.warn(`Aviso: Endereço do CEP (${fullQuery}) não foi totalmente reconhecido pelo Google Maps Geocoder.`);
@@ -404,8 +405,8 @@
         function getDistance(origin, destination) {
              return new Promise((resolve, reject) => {
                 const request = {
-                    origin: origin,       // LatLng ou String
-                    destination: destination, // LatLng ou String
+                    origin: origin,       
+                    destination: destination, 
                     travelMode: google.maps.TravelMode.DRIVING,
                     unitSystem: google.maps.UnitSystem.METRIC 
                 };
@@ -451,8 +452,8 @@
                 origemAddress = document.getElementById("origem").value; 
                 destinoAddress = document.getElementById("destino").value; 
 
-                if (!origemAddress || origemAddress.includes("Endereço gerado após") || origemAddress.includes("Selecione a Origem")) throw new Error("Defina o endereço de Origem primeiro.");
-                if (!destinoAddress || destinoAddress.includes("Endereço gerado automaticamente") || destinoAddress.includes("Selecione o Destino")) throw new Error("Defina o endereço de Destino primeiro.");
+                if (!origemAddress || origemAddress.includes("Selecione a Origem")) throw new Error("Defina o endereço de Origem primeiro.");
+                if (!destinoAddress || destinoAddress.includes("Selecione o Destino")) throw new Error("Defina o endereço de Destino primeiro.");
 
                 if (tipoVeiculo === "15") {
                     cilindrada = parseInt(document.getElementById("cilindrada-moto").value);
@@ -466,7 +467,6 @@
                 if (!isNaN(savedLon) && !isNaN(savedLat)) {
                     // ORIGEM: Geolocalização ou Mapa (coordenadas salvas)
                     coordOrigem = new google.maps.LatLng(savedLat, savedLon);
-                    // O endereço de texto já está no campo origemAddress
                 } else {
                     // ORIGEM: Geocodificação de Endereço/CEP
                     const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
@@ -485,7 +485,6 @@
                 if (!isNaN(savedDestLon) && !isNaN(savedDestLat)) {
                     // DESTINO: Mapa (coordenadas salvas)
                     coordDestino = new google.maps.LatLng(savedDestLat, savedDestLon);
-                    // O endereço de texto já está no campo destinoAddress
                 } else {
                     // DESTINO: Geocodificação de Endereço/CEP
                     const cepDestino = document.getElementById("cep-destino").value.replace(/\D/g, "");
@@ -561,34 +560,59 @@
             }
         }
 
-        // === FLUXO DE MAPA INTERATIVO ===
+        // === FLUXO DE MAPA INTERATIVO (PONTOS 1 e 2 RESOLVIDOS AQUI) ===
         
         function toggleMapSection(mode) {
             const mapSection = document.getElementById("map-interaction-section");
             const mapStatus = document.getElementById("map-status");
+            let targetPlaceholder;
             
+            // Encontra o placeholder correto para injetar o mapa
+            if (mode === 'ORIGIN') {
+                targetPlaceholder = document.getElementById("origin-map-placeholder");
+            } else { // 'DESTINATION'
+                targetPlaceholder = document.getElementById("destination-map-placeholder");
+            }
+
             if (currentMapMode === mode) {
-                // Desativa o modo se for o mesmo
+                // Desativa o modo: move o mapa para fora do fluxo visível e oculta
                 currentMapMode = null;
                 mapSection.style.display = 'none';
                 mapStatus.textContent = '';
-                return;
+                // Oculta os marcadores ao fechar
+                originMarker.setVisible(false);
+                destinationMarker.setVisible(false);
+                
+            } else {
+                // Se estava ativo em outro modo, desativa o antigo
+                if (currentMapMode !== null) {
+                    document.getElementById("map-interaction-section").style.display = 'none';
+                }
+                
+                currentMapMode = mode;
+                
+                // PONTO 1: Move o mapa para o novo placeholder (IMEDIATAMENTE ABAIXO DO BOTÃO)
+                targetPlaceholder.appendChild(mapSection); 
+                mapSection.style.display = 'block';
+
+                // Reajusta o mapa após movê-lo (necessário para que ele renderize corretamente)
+                google.maps.event.trigger(map, 'resize'); 
+                
+                // Centraliza o mapa
+                const center = (mode === 'ORIGIN') ? originMarker.getPosition() || new google.maps.LatLng(BASE_ADDRESS.lat, BASE_ADDRESS.lng) : destinationMarker.getPosition() || RIO_CENTER;
+                map.setCenter(center);
+                map.setZoom(14); 
+                
+                // Atualiza o status de instrução
+                mapStatus.textContent = `Modo Ativo: CLIQUE no mapa para definir o ponto de ${mode === 'ORIGIN' ? 'ORIGEM' : 'DESTINO'}.`;
+                
+                // Oculta/Mostra marcadores
+                originMarker.setVisible(mode === 'ORIGIN');
+                destinationMarker.setVisible(mode === 'DESTINATION');
+                
+                // Rola para a seção do mapa para garantir que o usuário veja
+                mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-
-            // Ativa o modo
-            currentMapMode = mode;
-            mapSection.style.display = 'block';
-            
-            // Centraliza o mapa na base se for ORIGIN, ou no Rio se for DESTINATION
-            const center = (mode === 'ORIGIN') ? new google.maps.LatLng(BASE_ADDRESS.lat, BASE_ADDRESS.lng) : RIO_CENTER;
-            map.setCenter(center);
-
-            // Atualiza o status de instrução
-            mapStatus.textContent = `Modo Ativo: CLIQUE no mapa para definir o ponto de ${mode === 'ORIGIN' ? 'ORIGEM' : 'DESTINO'}.`;
-            
-            // Oculta/Mostra marcadores relevantes (para não confundir)
-            originMarker.setVisible(true);
-            destinationMarker.setVisible(true);
         }
 
         async function handleMapClick(event) {
@@ -609,7 +633,6 @@
                     addressField = document.getElementById('origem');
                     coordLatField = document.getElementById('coord-origem-lat');
                     coordLonField = document.getElementById('coord-origem-lon');
-                    addressField.placeholder = "Endereço definido pelo mapa";
                     
                     // Se a origem é definida por mapa, limpamos os campos CEP
                     document.getElementById("cep-origem").value = "";
@@ -620,7 +643,6 @@
                     addressField = document.getElementById('destino');
                     coordLatField = document.getElementById('coord-destino-lat');
                     coordLonField = document.getElementById('coord-destino-lon');
-                    addressField.placeholder = "Endereço definido pelo mapa";
                     
                     // Se o destino é definido por mapa, limpamos os campos CEP
                     document.getElementById("cep-destino").value = "";
@@ -629,15 +651,17 @@
 
                 // 1. Atualiza o Marcador
                 marker.setPosition(latlng);
+                marker.setVisible(true);
                 
-                // 2. Atualiza o Endereço de Texto (Visível)
+                // 2. Atualiza o Endereço de Texto (PONTO 3 RESOLVIDO)
                 addressField.value = `${enderecoTexto} (Mapa)`;
+                addressField.style.fontWeight = 'bold'; // Feedback visual
                 
                 // 3. Atualiza as Coordenadas Ocultas (Para o cálculo)
                 coordLatField.value = latlng.lat();
                 coordLonField.value = latlng.lng();
                 
-                mapStatus.textContent = `${currentMapMode === 'ORIGIN' ? 'Origem' : 'Destino'} definido: ${enderecoTexto} (Clique para confirmar)`;
+                mapStatus.textContent = `${currentMapMode === 'ORIGIN' ? 'Origem' : 'Destino'} definido: ${enderecoTexto}. Clique no botão "Selecionar no Mapa" para fechar.`;
 
             } catch (e) {
                 mostrarMensagemErro(`❌ Erro ao definir localização: ${e.message}`);
@@ -655,6 +679,7 @@
             // Limpa coordenadas salvas do mapa/geo para garantir que o cálculo usará o CEP/Endereço
             document.getElementById("coord-origem-lon").value = "";
             document.getElementById("coord-origem-lat").value = "";
+            origemField.style.fontWeight = 'normal';
 
             if (choice === 'cep') {
                 cepBlock.style.display = 'block';
@@ -692,6 +717,7 @@
                 
                 const end = await buscarEnderecoPorCEP(cep, numero);
                 document.getElementById("origem").value = end;
+                document.getElementById("origem").style.fontWeight = 'bold';
             } catch (e) {
                 mostrarMensagemErro(`❌ Erro na busca de Origem: ${e.message}`);
                 document.getElementById("origem").value = "";
@@ -706,6 +732,8 @@
             limparMensagemErro();
             document.getElementById("origem").value = "Buscando localização...";
             document.getElementById("btn-usar-localizacao").disabled = true;
+            document.getElementById("origem").style.fontWeight = 'normal';
+
 
             if (!navigator.geolocation) {
                 mostrarMensagemErro("❌ Seu navegador não suporta geolocalização.");
@@ -737,6 +765,7 @@
 
                 // 3. Limpar CEP/Número e popular campo de endereço
                 document.getElementById("origem").value = `(LOCALIZAÇÃO ATUAL) ${enderecoTexto}`;
+                document.getElementById("origem").style.fontWeight = 'bold';
                 
             } catch (error) {
                 let msg = "Erro ao obter localização. Verifique as permissões do navegador.";
@@ -772,9 +801,11 @@
                 // Força o uso do Geocoding por endereço (limpando coordenadas)
                 document.getElementById("coord-destino-lon").value = "";
                 document.getElementById("coord-destino-lat").value = "";
-                
+                document.getElementById("destino").style.fontWeight = 'normal';
+
                 const end = await buscarEnderecoPorCEP(cep, numero);
                 document.getElementById("destino").value = end;
+                document.getElementById("destino").style.fontWeight = 'bold';
             } catch (e) {
                 mostrarMensagemErro(`❌ Erro na busca de Destino: ${e.message}`);
                 document.getElementById("destino").value = "";
@@ -816,10 +847,9 @@
             
             document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
             
-            // Injeção do script do Google Maps com a biblioteca 'places' (Autocompletar)
+            // Injeção do script do Google Maps com a biblioteca 'places' e 'geometry'
             if (API_KEY_GOOGLE) {
                  const script = document.createElement('script');
-                 // Incluindo a biblioteca 'geometry' para cálculos e 'places' para futuros autocompletes/melhor UX
                  script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY_GOOGLE}&libraries=geometry,places&callback=initMap`;
                  script.onerror = () => {
                      mostrarMensagemErro("❌ Falha no carregamento dos serviços de mapa. Tente recarregar a página."); 
@@ -877,9 +907,12 @@
                 </button>
             </div>
             
-            <button id="btn-map-origem" type="button" style="background-color: #f7931e; margin-bottom: 15px;">
+            <button id="btn-map-origem" type="button" style="background-color: #f7931e; margin-top: 15px; margin-bottom: 15px;">
                 Selecionar no Mapa
             </button>
+            
+            <!-- Placeholder para o mapa de Origem (Ponto 1) -->
+            <div id="origin-map-placeholder"></div>
             
             <!-- CAMPO DE ENDEREÇO RESULTANTE (comum aos métodos) -->
             <div class="form-group">
@@ -904,6 +937,9 @@
             <button id="btn-map-destino" type="button" style="background-color: #f7931e; margin-top: 15px; margin-bottom: 15px;">
                 Selecionar no Mapa
             </button>
+            
+            <!-- Placeholder para o mapa de Destino (Ponto 1) -->
+            <div id="destination-map-placeholder"></div>
             
             <div class="form-group">
                 <label for="destino">Endereço de destino (Gerado automaticamente):</label>
@@ -934,7 +970,7 @@
             </div>
         </section>
         
-        <!-- SEÇÃO DE INTERAÇÃO COM O MAPA -->
+        <!-- SEÇÃO DE INTERAÇÃO COM O MAPA (Esta seção será movida pelo JS) -->
         <section id="map-interaction-section" class="section" style="display: none;">
             <h2>📍 Seleção por Mapa</h2>
             <div class="map-controls">
