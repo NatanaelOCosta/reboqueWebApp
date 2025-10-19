@@ -6,302 +6,319 @@
     <title>GB Service - Reboque</title>
     <link rel="shortcut icon" type="imagex/png" href="fav.ico">
     <style>
-        /* ==========================================================
-   ESTILOS ATUALIZADOS - GBService Reboque
-   Autor: Natanael Costa
-   Versão visual aprimorada (2025)
-   ========================================================== */
+            /* Reset básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Fundo com gradiente sutil para efeito moderno */
+            background: linear-gradient(135deg, #e0f2ff 0%, #f7f9fc 100%); 
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
 
-body {
-    font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(180deg, #e8f1fb 0%, #f7faff 100%);
-    color: #333;
-    line-height: 1.6;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 20px;
-}
+        .container {
+            background: white;
+            max-width: 600px;
+            width: 100%;
+            padding: 30px 40px;
+            /* Aumenta o arredondamento */
+            border-radius: 20px; 
+            /* Sombra mais suave e moderna */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05);
+            margin-top: 40px; /* Adiciona um espaço superior */
+        }
 
-/* ===== CONTAINER PRINCIPAL ===== */
-.container {
-    background: #fff;
-    max-width: 600px;
-    width: 100%;
-    padding: 40px 45px;
-    border-radius: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-}
+        .section {
+            margin-bottom: 30px;
+        }
 
-.container:hover {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
+        .section h2 {
+            font-size: 1.4rem; /* Um pouco maior */
+            margin-bottom: 20px;
+            color: #1a73e8; /* Cor mais proeminente */
+            border-bottom: none; /* Remove a borda inferior */
+            padding-bottom: 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section h2::before {
+            content: '📍'; /* Ícone de localização */
+            display: inline-block;
+            margin-right: 10px;
+            font-size: 1.5rem;
+            color: #1a73e8;
+        }
 
-/* ===== SEÇÕES ===== */
-.section {
-    margin-bottom: 30px;
-}
+        /* Formulário */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 18px; /* Mais espaço */
+        }
 
-.section h2 {
-    font-size: 1.35rem;
-    margin-bottom: 15px;
-    color: #0d47a1;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
+        label {
+            margin-bottom: 8px; /* Mais espaço */
+            font-weight: 600;
+            color: #444; /* Cor mais escura para melhor legibilidade */
+            user-select: none;
+        }
 
-/* ===== FORMULÁRIO ===== */
-.form-group {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 15px;
-}
+        input[type="text"],
+        input[type="number"],
+        select {
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0; /* Borda mais fina e clara */
+            border-radius: 10px; /* Mais arredondado */
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline-offset: 0;
+            background-color: #f9f9f9;
+        }
 
-label {
-    margin-bottom: 6px;
-    font-weight: 600;
-    color: #444;
-    user-select: none;
-}
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            border-color: #1a73e8;
+            outline: none;
+            box-shadow: 0 0 8px rgba(26, 115, 232, 0.2); /* Sombra de foco mais suave */
+            background-color: white;
+        }
 
-input[type="text"],
-input[type="number"],
-select {
-    padding: 12px 15px;
-    border: 2px solid #d9e3f0;
-    border-radius: 10px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    background-color: #fafbfd;
-}
+        /* Botão Padrão (Calcular Valor) */
+        button {
+            cursor: pointer;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 25px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            font-weight: 700;
+            width: 100%;
+            transition: background-color 0.3s ease, transform 0.1s ease; /* Adiciona transform */
+            user-select: none;
+            margin-top: 5px;
+            box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3); /* Sombra para o botão */
+        }
 
-input[type="text"]:focus,
-input[type="number"]:focus,
-select:focus {
-    border-color: #1e88e5;
-    background-color: #fff;
-    box-shadow: 0 0 8px rgba(30, 136, 229, 0.3);
-    outline: none;
-}
+        button:hover {
+            background: #155ab6;
+            transform: translateY(-1px); /* Efeito sutil de levantar */
+        }
+        
+        button:active {
+            transform: translateY(1px); /* Efeito de pressionar */
+            box-shadow: none;
+        }
+        
+        /* Estilização do Toggle de Escolha (Aba/Botão) */
+        .input-toggle {
+            margin-bottom: 25px;
+        }
 
-/* ===== BOTÕES ===== */
-button {
-    cursor: pointer;
-    background: #1e88e5;
-    color: #fff;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 14px 25px;
-    font-size: 1.1rem;
-    border-radius: 12px;
-    font-weight: 700;
-    width: 100%;
-    transition: all 0.25s ease;
-    margin-top: 8px;
-}
+        .input-toggle > label {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: #333;
+            font-weight: bold;
+        }
 
-button:hover,
-button:focus {
-    background: #1565c0;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(21, 101, 192, 0.3);
-}
+        .radio-group {
+            display: flex;
+            gap: 10px; /* Espaço entre os botões */
+            flex-wrap: wrap;
+            border: none; /* Remove a borda externa */
+            border-radius: 12px;
+            overflow: visible; /* Garante que as sombras não sejam cortadas */
+            background-color: transparent; /* Remove fundo cinza */
+        }
 
-/* ===== TOGGLE DE ESCOLHA ===== */
-.input-toggle {
-    margin-bottom: 20px;
-    border-radius: 10px;
-}
+        .radio-group input[type="radio"] {
+            display: none;
+        }
 
-.input-toggle > label {
-    display: block;
-    font-size: 1.1rem;
-    margin-bottom: 10px;
-    color: #333;
-    font-weight: 600;
-}
+        .radio-group label {
+            flex-grow: 1;
+            /* --- AJUSTE PARA CENTRALIZAÇÃO VERTICAL E HORIZONTAL --- */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* ----------------------------------------------------- */
+            padding: 15px 20px; /* Aumenta o padding */
+            cursor: pointer;
+            background-color: white; /* Fundo branco padrão */
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 0;
+            border: 1px solid #ddd; /* Borda sutil */
+            border-radius: 10px; /* Arredondamento individual */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            /* Remove a borda direita desnecessária */
+            border-right: 1px solid #ddd;
+        }
 
-.radio-group {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    overflow: hidden;
-    background-color: #f9fafb;
-}
+        .radio-group label:last-child {
+             border-right: 1px solid #ddd; /* Mantém a borda no último item */
+        }
 
-.radio-group input[type="radio"] {
-    display: none;
-}
+        .radio-group label:hover {
+            background-color: #f0f4f8; /* Efeito hover sutil */
+        }
+        
+        .radio-group input[type="radio"]:checked + label {
+            background-color: #1a73e8;
+            color: white;
+            border-color: #1a73e8;
+            /* Sombra mais proeminente e sem o efeito inset */
+            box-shadow: 0 4px 10px rgba(26, 115, 232, 0.4); 
+            transform: translateY(-2px); /* Efeito de elevação ao selecionar */
+        }
+        /* Fim Estilização Toggle */
 
-.radio-group label {
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px 10px;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    font-weight: 600;
-    margin-bottom: 0;
-    border-right: 1px solid #eee;
-    color: #444;
-}
+        /* Estilos do Mapa */
+        #map-canvas {
+            height: 300px; 
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            background-color: #e9e9e9;
+        }
+        
+        .map-controls {
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            margin-top: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
 
-.radio-group label:last-child {
-    border-right: none;
-}
+        .map-status {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #d9480f; 
+        }
+        
+        #resultado {
+            font-weight: 700;
+            white-space: pre-line;
+            font-size: 1.1rem;
+            padding: 20px 25px; /* Mais padding */
+            background: #e1f0ff;
+            border-radius: 10px; /* Mais arredondado */
+            border: 1px solid #7ab8ff;
+            min-height: 60px;
+            color: #0d47a1;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        #mensagem-erro {
+            color: #721c24; 
+            margin-bottom: 20px; 
+            padding: 15px; 
+            border: 1px solid #f5c6cb; 
+            background-color: #f8d7da;
+            border-radius: 10px;
+            font-weight: 600;
+        }
 
-.radio-group input[type="radio"]:checked + label {
-    background-color: #1e88e5;
-    color: #fff;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.15);
-}
+        .whatsapp-button {
+            background-color: #25D366; 
+            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.4);
+        }
 
-/* ===== MAPA ===== */
-#map-canvas {
-    height: 300px; 
-    width: 100%;
-    border-radius: 10px;
-    border: 1px solid #cfd8dc;
-    background-color: #e9edf1;
-}
+        .whatsapp-button:hover,
+        .whatsapp-button:focus {
+            background-color: #128C7E;
+        }
+        
+        /* Estilo do botão de confirmação do mapa */
+        #btn-confirmar-mapa {
+            background-color: #38a169;
+            box-shadow: 0 4px 10px rgba(56, 161, 105, 0.3);
+        }
+        #btn-confirmar-mapa:hover {
+            background-color: #277e53;
+        }
 
-.map-controls {
-    padding: 15px;
-    background-color: #fff;
-    border-radius: 10px;
-    border: 1px solid #dce3ea;
-    margin-top: 15px;
-}
+        #detalhes-moto {
+            margin-top: 15px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background-color: #f0f4f8;
+        }
+        
+        /* NOVO ESTILO PARA A LOGO (IMAGEM) */
+        .logo-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
 
-.map-status {
-    text-align: center;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: #f57c00;
-}
+        .logo-img {
+            max-width: 250px; 
+            height: auto;
+            border-radius: 6px; 
+            display: inline-block;
+        }
+        /* FIM NOVO ESTILO LOGO */
 
-/* ===== RESULTADOS ===== */
-#resultado {
-    font-weight: 700;
-    white-space: pre-line;
-    font-size: 1.1rem;
-    padding: 18px 20px;
-    background: #e3f2fd;
-    border-radius: 10px;
-    border: 1px solid #90caf9;
-    min-height: 60px;
-    color: #0d47a1;
-    margin-top: 10px;
-    text-align: center;
-}
+        /* AJUSTE PARA O RODAPÉ DISCRETO E CENTRALIZADO */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.85rem;
+            color: #999;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        .footer strong {
+            font-weight: 500; 
+            color: #777;
+        }
+        /* FIM AJUSTE RODAPÉ */
+        
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            .radio-group {
+                gap: 5px; /* Reduz o espaço no mobile */
+            }
+            .radio-group label {
+                flex-basis: 48%; /* Garante 2 por linha */
+                padding: 12px 10px;
+                font-size: 0.9rem;
+            }
 
-#mensagem-erro {
-    margin-bottom: 10px;
-    padding: 15px;
-    border: 2px solid #f8d7da;
-    background-color: #fdecea;
-    color: #b71c1c;
-    border-radius: 10px;
-    font-weight: 600;
-    text-align: center;
-}
-
-/* ===== WHATSAPP BUTTON ===== */
-.whatsapp-button {
-    background-color: #25d366;
-    color: #fff;
-    border: none;
-    padding: 14px 25px;
-    font-size: 1.1rem;
-    border-radius: 12px;
-    font-weight: 700;
-    width: 100%;
-    margin-top: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.whatsapp-button:hover {
-    background-color: #128c7e;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(18, 140, 126, 0.3);
-}
-
-/* ===== BOTÃO CONFIRMAR MAPA ===== */
-#btn-confirmar-mapa {
-    background-color: #38a169;
-}
-#btn-confirmar-mapa:hover {
-    background-color: #277e53;
-}
-
-/* ===== DETALHES MOTO ===== */
-#detalhes-moto {
-    margin-top: 15px;
-    padding: 15px;
-    border: 1px solid #eee;
-    border-radius: 10px;
-    background-color: #fafafa;
-}
-
-/* ===== LOGO ===== */
-.logo-container {
-    text-align: center;
-    margin-bottom: 30px;
-}
-.logo-img {
-    max-width: 260px;
-    height: auto;
-    display: inline-block;
-}
-
-/* ===== RODAPÉ ===== */
-.footer {
-    text-align: center;
-    margin-top: 35px;
-    font-size: 0.85rem;
-    color: #888;
-    padding-top: 15px;
-    border-top: 1px solid #eee;
-}
-.footer strong {
-    font-weight: 500;
-    color: #666;
-}
-
-/* ===== RESPONSIVIDADE ===== */
-@media (max-width: 480px) {
-    .container {
-        padding: 25px;
-    }
-    .radio-group label {
-        flex-basis: 45%;
-        font-size: 0.9rem;
-    }
-    input[type="text"],
-    input[type="number"],
-    select,
-    button {
-        font-size: 1rem;
-        padding: 10px 12px;
-    }
-}
-
+            input[type="text"],
+            input[type="number"],
+            select,
+            button {
+                font-size: 1rem;
+                padding: 12px 12px;
+            }
+            .section h2 {
+                 font-size: 1.2rem;
+            }
+        }
     </style>
     <script>
         // =================================================================
