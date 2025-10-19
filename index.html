@@ -117,7 +117,6 @@
             margin-bottom: 10px;
             color: #444;
             font-weight: bold;
-            text-align: center;
         }
 
         .radio-group {
@@ -136,7 +135,10 @@
 
         .radio-group label {
             flex-grow: 1;
-            text-align: center;
+            /* --- AJUSTE PARA CENTRALIZAÇÃO VERTICAL E HORIZONTAL --- */
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 12px 10px;
             cursor: pointer;
             background-color: transparent;
@@ -1029,7 +1031,7 @@
                     map.setZoom(14); 
                 }
                 
-                document.getElementById("map-status").textContent = `Clique no mapa para definir o local de destino.`;
+                document.getElementById("map-status").textContent = `Clique no mapa para definir o local de destino`;
                 if (destinationMarker) destinationMarker.setVisible(true);
                 
                 mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
