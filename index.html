@@ -92,6 +92,7 @@
             width: 100%;
             transition: background-color 0.3s ease;
             user-select: none;
+            margin-top: 5px;
         }
 
         button:hover,
@@ -100,8 +101,21 @@
             outline: none;
         }
 
-        .button-buscar {
+        .button-group {
+            display: flex;
+            gap: 10px;
             margin-bottom: 15px;
+            flex-wrap: wrap; /* Garante responsividade */
+        }
+
+        .button-group button {
+            flex: 1; /* Distribui o espaço entre os botões */
+            min-width: 150px; /* Garante que os botões não fiquem pequenos demais */
+            margin-top: 0;
+        }
+        
+        .button-buscar {
+            /* Mantido para compatibilidade, mas agora usa .button-group */
         }
 
         #resultado {
@@ -130,9 +144,8 @@
             .container {
                 padding: 20px;
             }
-
-            .title {
-                font-size: 1.5rem;
+            .button-group button {
+                flex-basis: 100%;
             }
 
             input[type="text"],
@@ -178,11 +191,9 @@
         }
 
         .number-label {
-            /* Ajuste para que o número ocupe o espaço disponível sem quebrar o layout */
             width: 100%; 
         }
         
-        /* Ajuste para o campo de número no layout flexível */
         .endereco-section .form-group:nth-child(2) input[type="number"], 
         .destino-section .form-group:nth-child(2) input[type="number"] {
             width: 100%;
@@ -214,18 +225,14 @@
         // Configurações e Funções do JS
         const API_KEY = "5b3ce3597851110001cf62489e24024317f24032483d474b971a0694"; 
         const enderecoBase = "R. Dom João VI, 6 - Santa Cruz, Rio de Janeiro - RJ";
-        const WHATSAPP_NUMBER = "5521999999999"; // Substitua pelo número real
+        const WHATSAPP_NUMBER = "5521999999999"; 
 
         // --- FUNÇÕES DE ROBUSTEZ DE REDE ---
         
-        // Função utilitária para pausar a execução
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        /**
-         * Realiza um fetch com tentativas e exponencial backoff para lidar com falhas de rede temporárias.
-         */
         async function retryFetch(url, options = {}, maxRetries = 3) {
             for (let i = 0; i < maxRetries; i++) {
                 try {
@@ -235,21 +242,17 @@
                         return response;
                     }
                     
-                    // Se não for OK e for a última tentativa, lance um erro de status
                     if (i === maxRetries - 1) {
                         throw new Error(`Falha na requisição após ${maxRetries} tentativas. Status: ${response.status} ${response.statusText}`);
                     }
 
                 } catch (error) {
-                    // Captura NetworkError (falha de conexão, CORS, etc.)
                     console.error(`Tentativa ${i + 1} falhou (Erro de Rede/Conexão):`, error.message);
                     if (i === maxRetries - 1) {
-                        // Lança um erro final para a camada de visualização
                         throw new Error("Falha na requisição de rede após múltiplas tentativas. Verifique sua conexão ou tente novamente mais tarde.");
                     }
                 }
                 
-                // Exponencial backoff: 1s, 2s, 4s...
                 const delay = Math.pow(2, i) * 1000; 
                 console.log(`Aguardando ${delay / 1000}s antes de tentar novamente...`);
                 await sleep(delay);
@@ -257,9 +260,6 @@
         }
         // -------------------------------------
         
-        /**
-         * Aplica um pequeno deslocamento (jitter) nas coordenadas para forçar o cálculo de rota.
-         */
         function applyJitter(coords) {
             const [lon, lat] = coords;
             return [lon, lat + 0.000001]; 
@@ -268,21 +268,23 @@
         async function buscarEnderecoPorCEP(cep, numero) {
             limparMensagemErro(); 
 
-            // USANDO retryFetch para ViaCEP
+            // 1. Busca no ViaCEP (com retry)
             const response = await retryFetch(`https://viacep.com.br/ws/${cep}/json/`);
             
             const data = await response.json();
             if (data.erro) throw new Error("CEP não encontrado.");
 
             const enderecoCompleto = `${data.logradouro}, ${numero} - ${data.bairro}, ${data.localidade} - ${data.uf}`;
+            
+            // 2. Valida geocodificação (com retry no Geocode interno)
             const valido = await validarEndereco(enderecoCompleto);
             if (!valido) throw new Error("Endereço inválido ou fora do Brasil (apenas Brasil é suportado).");
+            
             return enderecoCompleto;
         }
 
         async function validarEndereco(enderecoCompleto) {
             try {
-                // Apenas verifica se o geocode retorna algo válido.
                 const coords = await geocode(enderecoCompleto);
                 if (!coords) return false;
                 const [lon, lat] = coords;
@@ -290,16 +292,17 @@
                 // Validação de latitude/longitude para o Brasil (relaxada).
                 return lat <= 7 && lat >= -36 && lon >= -76 && lon <= -33;
             } catch (e) {
-                // Se a geocodificação falhar após as tentativas de retry, a validação falha
                 console.error("Falha na validação do geocode:", e.message);
                 return false;
             }
         }
 
+        /**
+         * Realiza Geocodificação (Texto -> Coordenadas)
+         */
         async function geocode(endereco) {
             const url = `https://api.openrouteservice.org/geocode/search?api_key=${API_KEY}&text=${encodeURIComponent(endereco)}`;
             
-            // USANDO retryFetch para Geocoding
             const response = await retryFetch(url);
 
             const data = await response.json();
@@ -308,6 +311,38 @@
             const coords = data.features[0].geometry?.coordinates;
             if (!coords || coords.length !== 2) throw new Error("Coordenadas inválidas.");
             return coords; // [lon, lat]
+        }
+        
+        /**
+         * Realiza Geocodificação Reversa (Coordenadas -> Texto)
+         * @param {number} lat Latitude.
+         * @param {number} lon Longitude.
+         * @returns {Promise<string>} Endereço completo em texto.
+         */
+        async function reverseGeocode(lat, lon) {
+            const url = `https://api.openrouteservice.org/geocode/reverse?api_key=${API_KEY}&point.lon=${lon}&point.lat=${lat}`;
+            
+            const response = await retryFetch(url);
+
+            const data = await response.json();
+            
+            if (!data.features?.length) throw new Error("Endereço não encontrado nas coordenadas.");
+
+            // Pega o endereço mais provável (primeira feature)
+            const properties = data.features[0].properties;
+            
+            // Tenta montar um endereço completo e limpo
+            const addressParts = [
+                properties.housenumber,
+                properties.street,
+                properties.postalcode,
+                properties.locality,
+                properties.region
+            ].filter(p => p).join(', ');
+
+            if (!addressParts) throw new Error("Não foi possível formatar o endereço.");
+
+            return addressParts;
         }
 
         async function rota(pontoA, pontoB) {
@@ -323,7 +358,6 @@
                 body: JSON.stringify(body),
             };
 
-            // USANDO retryFetch para o cálculo da Rota
             const response = await retryFetch(url, options);
 
             const data = await response.json();
@@ -338,9 +372,6 @@
             return distancia / 1000; // km
         }
         
-        /**
-         * Tenta calcular a rota com segurança, aplicando fallback em caso de colapso de coordenadas.
-         */
         async function safeRota(pontoA, pontoB, isJittered) {
             const MIN_SAFE_DISTANCE_KM = 0.2; 
             
@@ -354,7 +385,6 @@
                 
                 return { distance, fallback: false };
             } catch (error) {
-                // Se a rota falhou (mesmo com retry), aplica o fallback
                 console.warn(`[DEBUG] Rota falhou. Aplicando fallback para evitar travamento. Erro: ${error.message}`);
                 return { distance: MIN_SAFE_DISTANCE_KM, fallback: true };
             }
@@ -373,6 +403,7 @@
             let enderecoDestinoCompleto;
             let tipoVeiculo;
             let cilindrada = 0; 
+            let coordOrigem;
 
             try {
                 document.getElementById("resultado").innerText = "Calculando...";
@@ -380,16 +411,10 @@
                 tipoVeiculo = document.getElementById("tipo").value;
                 if (!tipoVeiculo) throw new Error("Selecione o tipo de veículo.");
 
-                const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
-                const numeroOrigem = document.getElementById("numero-origem").value;
                 enderecoOrigemCompleto = document.getElementById("origem").value; 
-
-                const cepDestino = document.getElementById("cep-destino").value.replace(/\D/g, "");
-                const numeroDestino = document.getElementById("numero-destino").value;
                 enderecoDestinoCompleto = document.getElementById("destino").value; 
 
-
-                if (!enderecoOrigemCompleto) throw new Error("Busque o endereço de Origem primeiro.");
+                if (!enderecoOrigemCompleto) throw new Error("Defina o endereço de Origem (CEP ou Localização Atual).");
                 if (!enderecoDestinoCompleto) throw new Error("Busque o endereço de Destino primeiro.");
 
                 if (tipoVeiculo === "15") {
@@ -397,12 +422,26 @@
                     if (isNaN(cilindrada)) throw new Error("Informe a cilindrada da moto.");
                 }
                 
-                console.log("[DEBUG TEST] Modo de fluxo normal ativado.");
-
+                // --- 1. Determinar Coordenadas de Origem ---
+                const savedLon = parseFloat(document.getElementById("coord-origem-lon").value);
+                const savedLat = parseFloat(document.getElementById("coord-origem-lat").value);
                 
-                // Calcular Taxa Fixa 
-                let taxa = 0;
+                if (!isNaN(savedLon) && !isNaN(savedLat)) {
+                    // ORIGEM VEIO DA GEOLOCALIZAÇÃO
+                    coordOrigem = [savedLon, savedLat];
+                    console.log("[COORD SOURCE] Origem obtida via Geolocation.");
+                } else {
+                    // ORIGEM VEIO DO CEP/BUSCA (PRECISA DE FORWARD GEOCODING)
+                    const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
+                    const numeroOrigem = document.getElementById("numero-origem").value;
+                    const geocodeQueryOrigem = `${enderecoOrigemCompleto}, Número ${numeroOrigem}, CEP ${cepOrigem}`;
+                    
+                    coordOrigem = await geocode(geocodeQueryOrigem);
+                    console.log("[COORD SOURCE] Origem obtida via Forward Geocoding.");
+                }
 
+                // --- 2. Calcular Taxa Fixa ---
+                let taxa = 0;
                 if (tipoVeiculo === "50") taxa = 50;
                 else if (tipoVeiculo === "15") {
                     if (cilindrada <= 160) taxa = 15;
@@ -412,13 +451,13 @@
                     else taxa = 100;
                 }
 
-                // Geocodificar Coordenadas (em paralelo)
-                const geocodeQueryOrigem = `${enderecoOrigemCompleto}, Número ${numeroOrigem}, CEP ${cepOrigem}`;
+                // --- 3. Geocodificar Base e Destino (em paralelo) ---
+                const cepDestino = document.getElementById("cep-destino").value.replace(/\D/g, "");
+                const numeroDestino = document.getElementById("numero-destino").value;
                 const geocodeQueryDestino = `${enderecoDestinoCompleto}, Número ${numeroDestino}, CEP ${cepDestino}`;
                 
-                const [coordBase, coordOrigem, coordDestino] = await Promise.all([
+                const [coordBase, coordDestino] = await Promise.all([
                     geocode(enderecoBase),
-                    geocode(geocodeQueryOrigem),
                     geocode(geocodeQueryDestino),
                 ]);
                 
@@ -426,7 +465,7 @@
                 console.log(`[COORD DEBUG] Origem Coords: ${coordsString(coordOrigem)}`);
                 console.log(`[COORD DEBUG] Destino Coords: ${coordsString(coordDestino)}`);
 
-                // MONTAR PARES DE ROTA COM JITTER SELETIVO
+                // --- 4. MONTAR PARES DE ROTA COM JITTER SELETIVO ---
                 let baseToOrigem = [coordBase, coordOrigem];
                 let origemToDestino = [coordOrigem, coordDestino];
                 let destinoToBase = [coordDestino, coordBase];
@@ -436,18 +475,16 @@
                     baseToOrigem = [coordBase, applyJitter(coordOrigem)];
                     jitterApplied[1] = true;
                 }
-
                 if (JSON.stringify(coordOrigem) === JSON.stringify(coordDestino)) {
                     origemToDestino = [coordOrigem, applyJitter(coordDestino)];
                     jitterApplied[2] = true;
                 }
-
                 if (JSON.stringify(coordDestino) === JSON.stringify(coordBase)) {
                     destinoToBase = [coordDestino, applyJitter(coordBase)];
                     jitterApplied[3] = true;
                 }
 
-                // Calcular Rotas (em paralelo) usando safeRota
+                // --- 5. Calcular Rotas (em paralelo) ---
                 const promiseDist1 = safeRota(baseToOrigem[0], baseToOrigem[1], jitterApplied[1]);
                 const promiseDist2 = safeRota(origemToDestino[0], origemToDestino[1], jitterApplied[2]);
                 const promiseDist3 = safeRota(destinoToBase[0], destinoToBase[1], jitterApplied[3]);
@@ -462,15 +499,11 @@
                 const dist2 = res2.distance;
                 const dist3 = res3.distance;
                 
-                console.log(`[DIST DEBUG] Distância 1 (Base->Origem): ${dist1.toFixed(2)} km. Fallback: ${res1.fallback}`);
-                console.log(`[DIST DEBUG] Distância 2 (Origem->Destino): ${dist2.toFixed(2)} km. Fallback: ${res2.fallback}`);
-                console.log(`[DIST DEBUG] Distância 3 (Destino->Base): ${dist3.toFixed(2)} km. Fallback: ${res3.fallback}`);
-
                 const fallback1 = res1.fallback;
                 const fallback2 = res2.fallback;
                 const fallback3 = res3.fallback;
 
-                // Apresentar Resultado
+                // --- 6. Apresentar Resultado ---
                 const distanciaTotalKm = dist1 + dist2 + dist3;
                 const valorKm = distanciaTotalKm * 1.7; // R$ 1,70 por km
                 valorTotal = valorKm + taxa;
@@ -501,8 +534,7 @@
                 
             } catch (error) {
                 console.error("Erro no cálculo:", error);
-                // Mensagem de erro foi melhorada para incluir o erro de rede/status
-                mostrarMensagemErro(`❌ Erro: ${error.message}. Tente buscar o endereço novamente.`); 
+                mostrarMensagemErro(`❌ Erro: ${error.message}`); 
                 document.getElementById("resultado").innerText = "❌ Erro no cálculo. Verifique os dados.";
                 document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
             }
@@ -535,38 +567,108 @@
             };
         }
 
+        // === FLUXO DE BUSCA DE ENDEREÇO ===
 
+        async function buscarOrigemCEP() {
+            limparMensagemErro();
+            const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
+            const numero = document.getElementById("numero-origem").value;
+            if (!cep || !numero) {
+                 mostrarMensagemErro("Preencha CEP e Número para buscar o endereço.");
+                 return;
+            }
+            try {
+                // Limpa coordenadas salvas (indicando que a origem é agora via CEP)
+                document.getElementById("coord-origem-lon").value = "";
+                document.getElementById("coord-origem-lat").value = "";
+                
+                const end = await buscarEnderecoPorCEP(cep, numero);
+                document.getElementById("origem").value = end;
+            } catch (e) {
+                mostrarMensagemErro(e.message);
+                document.getElementById("origem").value = "";
+            }
+        }
+
+        async function usarLocalizacaoAtual() {
+            limparMensagemErro();
+            document.getElementById("origem").value = "Buscando localização...";
+
+            if (!navigator.geolocation) {
+                mostrarMensagemErro("Seu navegador não suporta geolocalização.");
+                document.getElementById("origem").value = "";
+                return;
+            }
+
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                
+                // 1. Tentar reverter as coordenadas para endereço de texto
+                const enderecoTexto = await reverseGeocode(lat, lon);
+                
+                // 2. Salvar as coordenadas reais nos campos hidden para usar no cálculo
+                document.getElementById("coord-origem-lon").value = lon;
+                document.getElementById("coord-origem-lat").value = lat;
+
+                // 3. Limpar CEP/Número e popular campo de endereço
+                document.getElementById("cep-origem").value = "";
+                document.getElementById("numero-origem").value = "";
+                document.getElementById("origem").value = `(LOCALIZAÇÃO ATUAL) ${enderecoTexto}`;
+                
+            } catch (error) {
+                let msg = "Erro ao obter localização. Verifique as permissões do navegador.";
+                if (error.code === 1) {
+                    msg = "Permissão de geolocalização negada pelo usuário.";
+                } else if (error.code === 3) {
+                    msg = "Tempo limite excedido para obter localização.";
+                } else {
+                    // Erro vindo do reverseGeocode (NetworkError ou Endereço não encontrado)
+                    msg = `Falha na geolocalização ou no reconhecimento do endereço: ${error.message}`;
+                }
+                mostrarMensagemErro(`❌ ${msg}`);
+                document.getElementById("origem").value = "";
+                document.getElementById("coord-origem-lon").value = "";
+                document.getElementById("coord-origem-lat").value = "";
+            }
+        }
+
+        async function buscarDestinoCEP() {
+            limparMensagemErro();
+            const cep = document.getElementById("cep-destino").value.replace(/\D/g, "");
+            const numero = document.getElementById("numero-destino").value;
+            if (!cep || !numero) {
+                 mostrarMensagemErro("Preencha CEP e Número do destino para buscar o endereço.");
+                 return;
+            }
+            try {
+                const response = await buscarEnderecoPorCEP(cep, numero);
+                document.getElementById("destino").value = response;
+            } catch (e) {
+                mostrarMensagemErro(e.message);
+                document.getElementById("destino").value = "";
+            }
+        }
+
+        // === SETUP INICIAL ===
         window.onload = function() {
             
-            async function buscarOrigem() {
-                limparMensagemErro();
-                const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
-                const numero = document.getElementById("numero-origem").value;
-                try {
-                    const end = await buscarEnderecoPorCEP(cep, numero);
-                    document.getElementById("origem").value = end;
-                } catch (e) {
-                    mostrarMensagemErro(e.message);
-                    document.getElementById("origem").value = "";
-                }
-            }
-
-            async function buscarDestino() {
-                limparMensagemErro();
-                const cep = document.getElementById("cep-destino").value.replace(/\D/g, "");
-                const numero = document.getElementById("numero-destino").value;
-                try {
-                    const end = await buscarEnderecoPorCEP(cep, numero);
-                    document.getElementById("destino").value = end;
-                } catch (e) {
-                    mostrarMensagemErro(e.message);
-                    document.getElementById("destino").value = "";
-                }
-            }
-
             document.getElementById("btn-calcular").addEventListener("click", calcular);
-            document.getElementById("btn-buscar-origem").addEventListener("click", buscarOrigem);
-            document.getElementById("btn-buscar-destino").addEventListener("click", buscarDestino);
+            
+            // Novos Listeners para os botões de Origem
+            document.getElementById("btn-buscar-origem-cep").addEventListener("click", buscarOrigemCEP);
+            document.getElementById("btn-usar-localizacao").addEventListener("click", usarLocalizacaoAtual);
+
+            // Listener para o botão de Destino (mantém o nome da função)
+            document.getElementById("btn-buscar-destino").addEventListener("click", buscarDestinoCEP);
 
             document.getElementById("tipo").addEventListener("change", e => {
                 const showMoto = e.target.value === "15";
@@ -585,11 +687,13 @@
 </head>
 <body>
     <main class="container">
-        <!-- Substituído o logo por um título simples -->
         <h1 class="logo-placeholder">🚚 Gbservice Reboque</h1>
 
-        <!-- O elemento de erro foi corrigido para não ter o 'style' inline de display: none, pois ele é controlado pelo JS -->
         <div id="mensagem-erro" class="mensagem-erro" style="display: none;"></div>
+        
+        <!-- CAMPOS HIDDEN PARA SALVAR COORDENADAS DA GEOLOCALIZAÇÃO -->
+        <input type="hidden" id="coord-origem-lon" value="" />
+        <input type="hidden" id="coord-origem-lat" value="" />
 
         <section class="section endereco-section">
             <h2>Local do Veículo (Origem)</h2>
@@ -598,14 +702,20 @@
                 <input type="text" id="cep-origem" placeholder="Digite o CEP de onde o veículo está" maxlength="8" autocomplete="postal-code" />
             </div>
             <div class="form-group">
-                <label for="numero-origem">Número:</label>
+                <label for="numero-origem">Número (Se aplicável):</label>
                 <input type="number" class="number-label" id="numero-origem" placeholder="Número" autocomplete="address-level1" />
             </div>
-            <!-- ID adicionado para o JS anexar o evento -->
-            <button id="btn-buscar-origem" type="button" class="button-buscar">Buscar Endereço</button>
+            
+            <div class="button-group">
+                 <!-- Botão de buscar CEP RENOMEADO -->
+                <button id="btn-buscar-origem-cep" type="button">Buscar por CEP</button>
+                <!-- NOVO BOTÃO DE GEOLOCALIZAÇÃO -->
+                <button id="btn-usar-localizacao" type="button" style="background-color: #38a169;">Usar Localização Atual</button>
+            </div>
+            
             <div class="form-group">
-                <label for="origem">Endereço completo:</label>
-                <input disabled type="text" id="origem" placeholder="Endereço gerado automaticamente" autocomplete="street-address" />
+                <label for="origem">Endereço completo (Gerado automaticamente):</label>
+                <input disabled type="text" id="origem" placeholder="Endereço gerado após busca ou localização" autocomplete="street-address" />
             </div>
         </section>
 
@@ -619,8 +729,9 @@
                 <label for="numero-destino">Número:</label>
                 <input type="number" class="number-label" id="numero-destino" placeholder="Número" autocomplete="address-level1" />
             </div>
-            <!-- ID adicionado para o JS anexar o evento -->
-            <button id="btn-buscar-destino" type="button" class="button-buscar">Buscar Endereço</button>
+            
+            <button id="btn-buscar-destino" type="button" class="button-buscar">Buscar Endereço de Destino</button>
+            
             <div class="form-group">
                 <label for="destino">Endereço de destino completo:</label>
                 <input disabled type="text" id="destino" placeholder="Endereço gerado automaticamente" autocomplete="address-line1" />
@@ -635,7 +746,6 @@
             </div>
             <div id="detalhes-moto" style="display: none;">
                 <div class="form-group">
-                    <!-- Marca e Modelo não são usados no cálculo, mas foram mantidos para coleta de dados -->
                     <label for="marca-moto">Marca:</label>
                     <input type="text" id="marca-moto" placeholder="Ex.: Honda" />
                 </div>
@@ -651,7 +761,6 @@
         </section>
 
         <section class="section acao-section">
-            <!-- ID alterado para consistência com o JS (calcular-btn -> btn-calcular) -->
             <button id="btn-calcular" type="button">Calcular valor</button>
         </section>
 
