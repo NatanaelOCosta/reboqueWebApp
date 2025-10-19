@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GB Service - Reboque</title>
+    <title>Calculadora de Reboque Google Maps (Autocomplete e Número)</title>
     <style>
         /* Reset básico */
         * {
@@ -236,14 +236,20 @@
             border-radius: 8px;
             background-color: #f9f9f9;
         }
-
-        .logo-placeholder {
-            text-align: center;
-            font-size: 2rem;
-            font-weight: bold;
-            color: #1a73e8;
-            margin-bottom: 20px;
+        
+        /* NOVO ESTILO PARA A LOGO (IMAGEM) */
+        .logo-container {
+            text-align: center; /* Centraliza a imagem */
+            margin-bottom: 25px; /* Espaçamento abaixo da logo */
         }
+
+        .logo-img {
+            max-width: 200px; /* Define um tamanho máximo para a logo */
+            height: auto;
+            border-radius: 6px; 
+            display: inline-block; /* Garante que a imagem seja tratada corretamente */
+        }
+        /* FIM NOVO ESTILO LOGO */
 
         /* AJUSTE PARA O RODAPÉ DISCRETO E CENTRALIZADO */
         .footer {
@@ -1171,8 +1177,15 @@
 </head>
 <body>
     <main class="container">
-        <!--<h1 class="logo-placeholder">🚚 Gbservice Reboque</h1>-->
-        <img src="logo.png" alt="Logo da Gbservice Reboque">
+        <!-- NOVO BLOCO DE LOGO (IMAGEM) -->
+        <div class="logo-container">
+            <!-- Use esta URL como placeholder para o seu logo.png -->
+            <img src="logo.png" 
+                 alt="Logo GBservice Reboque" 
+                 class="logo-img" 
+                 onerror="this.onerror=null;this.src='https://placehold.co/200x50/999999/ffffff?text=Logo+Indisponível';" />
+        </div>
+        <!-- FIM BLOCO DE LOGO -->
         
         <div id="mensagem-erro" class="mensagem-erro" style="display: none;"></div>
         
