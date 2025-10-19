@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Calculadora de Reboque</title>
+    <title>Calculadora de Reboque Google Maps</title>
     <style>
         /* Reset básico */
         * {
@@ -210,13 +210,13 @@
         .troubleshooting {
             margin-top: 20px;
             padding: 15px;
-            border: 1px dashed #d6a100;
-            background-color: #fffde7;
+            border: 1px dashed #0c7b93;
+            background-color: #e6f6f9;
             border-radius: 8px;
             font-size: 0.9rem;
         }
         .troubleshooting h3 {
-            color: #d6a100;
+            color: #0c7b93;
             margin-bottom: 10px;
             font-size: 1.1rem;
         }
@@ -233,6 +233,13 @@
             color: #0d47a1;
         }
         
+        .loading-status {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #f90;
+            margin-bottom: 15px;
+        }
+
         /* Responsividade */
         @media (max-width: 480px) {
             .container {
@@ -253,337 +260,31 @@
     </style>
     <script>
         // =================================================================
-        // ATENÇÃO: CHAVE DE API DO GOOGLE MAPS PLATFORM
-        // Insira a sua chave aqui.
+        // ATENÇÃO: CHAVE DE API DO GOOGLE MAPS
+        // Insira sua chave de API do Google Maps.
         // =================================================================
-        const API_KEY_GOOGLE = "AIzaSyBwd9QQquprtp9WM-M3KlzXe6rOKAy41Ns"; // <<-- INSIRA SUA CHAVE AQUI -->>
+        const API_KEY_GOOGLE = "AIzaSyBwd9QQquprtp9WM-M3KlzXe6rOKAy41Ns"; // <<-- INSIRA SUA CHAVE GOOGLE AQUI -->>
         
-        const enderecoBase = "R. Dom João VI, 6 - Santa Cruz, Rio de Janeiro - RJ";
+        // Coordenadas da Base (R. Dom João VI, 6 - Santa Cruz, RJ)
+        const BASE_ADDRESS = { lat: -22.923831, lng: -43.682701 };
         const WHATSAPP_NUMBER = "5521999999999"; 
-
-        // --- FUNÇÕES DE ROBUSTEZ DE REDE (Retry com Backoff) ---
         
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+        // Variáveis globais para os serviços do Google Maps
+        let geocoder;
+        let directionsService;
+        let isGoogleMapsReady = false;
+
+        // Função de callback chamada quando o script do Google Maps é carregado
+        function initMap() {
+            geocoder = new google.maps.Geocoder();
+            directionsService = new google.maps.DirectionsService();
+            isGoogleMapsReady = true;
+            document.getElementById("loading-status").textContent = "Status: 🟢 Serviços do Google Maps prontos.";
+            console.log("Serviços do Google Maps inicializados.");
         }
 
-        async function retryFetch(url, options = {}, maxRetries = 3) {
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    
-                    if (response.ok) {
-                        return response;
-                    }
-                    
-                    if (i === maxRetries - 1) {
-                        throw new Error(`Falha na requisição (Status: ${response.status} ${response.statusText}).`);
-                    }
-
-                } catch (error) {
-                    // Erro de rede/conexão
-                    console.error(`Tentativa ${i + 1} falhou (Erro de Rede/Conexão):`, error.message);
-                    if (i === maxRetries - 1) {
-                        throw new Error("Falha na requisição de rede após múltiplas tentativas. Verifique sua conexão.");
-                    }
-                }
-                
-                const delay = Math.pow(2, i) * 1000; 
-                console.log(`Aguardando ${delay / 1000}s antes de tentar novamente...`);
-                await sleep(delay);
-            }
-        }
-        // -------------------------------------
+        // --- FUNÇÕES DE UTILIDADE ---
         
-        function applyJitter(coords) {
-            const [lat, lon] = coords;
-            // Adiciona um pequeno "jitter" (variação) na longitude para garantir que a rota seja calculada.
-            return [lat, lon + 0.000001]; 
-        }
-
-        async function buscarEnderecoPorCEP(cep, numero) {
-            limparMensagemErro(); 
-
-            // 1. Busca no ViaCEP (rápido para obter o texto do endereço)
-            const response = await retryFetch(`https://viacep.com.br/ws/${cep}/json/`);
-            
-            const data = await response.json();
-            if (data.erro) throw new Error("CEP não encontrado.");
-
-            const enderecoCompleto = `${data.logradouro}, ${numero} - ${data.bairro}, ${data.localidade} - ${data.uf}`;
-            
-            // 2. Validação Geocoding (usando Google Maps)
-            const coords = await geocode(enderecoCompleto);
-            if (!coords) throw new Error("Endereço inválido ou não reconhecido pelo Google Maps.");
-            
-            return enderecoCompleto;
-        }
-
-        /**
-         * Realiza Geocodificação (Texto -> Coordenadas) usando Google Maps Geocoding API
-         * Retorna [lat, lon]
-         */
-        async function geocode(endereco) {
-            if (API_KEY_GOOGLE === "YOUR_GOOGLE_MAPS_API_KEY") {
-                throw new Error("A chave de API não foi configurada no código.");
-            }
-            // Inclui o país para melhorar a precisão no Brasil.
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(endereco)}&region=br&key=${API_KEY_GOOGLE}`;
-            
-            const response = await retryFetch(url);
-
-            const data = await response.json();
-
-            if (data.status !== 'OK' || !data.results?.length) {
-                const erroMsg = data.error_message || data.status;
-                throw new Error(`Geocoding (Google Maps) falhou. Status: ${erroMsg}. (Pode ser erro de chave/faturamento)`);
-            }
-
-            const location = data.results[0].geometry?.location;
-            if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
-                 throw new Error("Coordenadas inválidas retornadas pelo Google Maps.");
-            }
-            return [location.lat, location.lng]; // [lat, lon]
-        }
-        
-        /**
-         * Realiza Geocodificação Reversa (Coordenadas -> Texto) usando Google Maps Geocoding API
-         * Retorna [lat, lon]
-         */
-        async function reverseGeocode(lat, lon) {
-             if (API_KEY_GOOGLE === "YOUR_GOOGLE_MAPS_API_KEY") {
-                throw new Error("A chave de API não foi configurada no código.");
-            }
-
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${API_KEY_GOOGLE}`;
-            
-            const response = await retryFetch(url);
-
-            const data = await response.json();
-            
-            if (data.status !== 'OK' || !data.results?.length) {
-                const erroMsg = data.error_message || data.status;
-                throw new Error(`Geocoding Reverso (Google Maps) falhou. Status: ${erroMsg}. (Pode ser erro de chave/faturamento)`);
-            }
-            
-            // Retorna o endereço formatado mais preciso (primeiro resultado)
-            const address = data.results[0].formatted_address;
-            if (!address) throw new Error("Não foi possível formatar o endereço (Google Maps Reverse).");
-
-            return address;
-        }
-
-        /**
-         * Calcula a rota (distância) usando Google Maps Directions API
-         * Ponto A e Ponto B devem ser [lat, lon]
-         * Retorna distância em KM
-         */
-        async function rota(pontoA, pontoB) {
-            if (API_KEY_GOOGLE === "YOUR_GOOGLE_MAPS_API_KEY") {
-                throw new Error("A chave de API não foi configurada no código.");
-            }
-            if (!Array.isArray(pontoA) || !Array.isArray(pontoB)) throw new Error("Coordenadas inválidas para a rota.");
-
-            const origin = `${pontoA[0]},${pontoA[1]}`; // lat,lon
-            const destination = `${pontoB[0]},${pontoB[1]}`; // lat,lon
-
-            // Usamos mode=driving e avoid=tolls para uma rota de reboque
-            const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&mode=driving&avoid=tolls&key=${API_KEY_GOOGLE}`;
-
-            const response = await retryFetch(url);
-
-            const data = await response.json();
-            
-            if (data.status !== 'OK' || !data.routes?.[0]?.legs?.[0]?.distance?.value) {
-                const erroMsg = data.error_message || data.status;
-                throw new Error(`Directions (Google Maps) falhou. Status: ${erroMsg}.`);
-            }
-
-            // Distância é em metros, convertemos para KM
-            const distanciaMetros = data.routes[0].legs[0].distance.value;
-            return distanciaMetros / 1000; // km
-        }
-        
-        async function safeRota(pontoA, pontoB, isJittered) {
-            const MIN_SAFE_DISTANCE_KM = 0.2; 
-            
-            try {
-                const distance = await rota(pontoA, pontoB);
-                
-                if (isJittered && distance < 0.001) { 
-                    console.warn("Distância calculada foi zero/quase zero mesmo com Jitter. Aplicando fallback.");
-                    return { distance: MIN_SAFE_DISTANCE_KM, fallback: true };
-                }
-                
-                return { distance, fallback: false };
-            } catch (error) {
-                console.warn(`[DEBUG] Rota falhou. Aplicando fallback para evitar travamento. Erro: ${error.message}`);
-                // O erro original é propagado para o bloco principal de catch para diagnóstico.
-                throw error; 
-            }
-        }
-
-        let valorTotal = 0;
-        
-        // Coords String agora mostra [Lat, Lon]
-        const coordsString = (coords) => `[Lat: ${coords[0].toFixed(5)}, Lon: ${coords[1].toFixed(5)}]`;
-
-
-        async function calcular() {
-            limparMensagemErro(); 
-            
-            let enderecoOrigemCompleto;
-            let enderecoDestinoCompleto;
-            let tipoVeiculo;
-            let cilindrada = 0; 
-            let coordOrigem;
-
-            try {
-                document.getElementById("resultado").innerText = "Calculando...";
-                
-                // 1. Validar e Obter Inputs Básicos
-                tipoVeiculo = document.getElementById("tipo").value;
-                if (!tipoVeiculo) throw new Error("Selecione o tipo de veículo.");
-
-                enderecoOrigemCompleto = document.getElementById("origem").value; 
-                enderecoDestinoCompleto = document.getElementById("destino").value; 
-
-                if (!enderecoOrigemCompleto) throw new Error("Defina o endereço de Origem (CEP ou Localização Atual) antes de calcular.");
-                if (!enderecoDestinoCompleto) throw new Error("Busque o endereço de Destino primeiro.");
-
-                if (tipoVeiculo === "15") {
-                    cilindrada = parseInt(document.getElementById("cilindrada-moto").value);
-                    if (isNaN(cilindrada)) throw new Error("Informe a cilindrada da moto.");
-                }
-                
-                // 2. Determinar Coordenadas de Origem
-                const savedLon = parseFloat(document.getElementById("coord-origem-lon").value);
-                const savedLat = parseFloat(document.getElementById("coord-origem-lat").value);
-                
-                if (!isNaN(savedLon) && !isNaN(savedLat)) {
-                    // ORIGEM VEIO DA GEOLOCALIZAÇÃO
-                    coordOrigem = [savedLat, savedLon]; // [lat, lon]
-                } else {
-                    // ORIGEM VEIO DO CEP/BUSCA (PRECISA DE FORWARD GEOCODING - Google)
-                    const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
-                    const numeroOrigem = document.getElementById("numero-origem").value;
-                    const geocodeQueryOrigem = `${enderecoOrigemCompleto}, Número ${numeroOrigem}, CEP ${cepOrigem}`;
-                    
-                    coordOrigem = await geocode(geocodeQueryOrigem); // [lat, lon]
-                }
-
-                // 3. Calcular Taxa Fixa
-                let taxa = 0;
-                if (tipoVeiculo === "50") taxa = 50;
-                else if (tipoVeiculo === "15") {
-                    if (cilindrada <= 160) taxa = 15;
-                    else if (cilindrada <= 250) taxa = 25;
-                    else if (cilindrada <= 499) taxa = 35;
-                    else if (cilindrada <= 999) taxa = 50;
-                    else taxa = 100;
-                }
-
-                // 4. Geocodificar Base e Destino (Google Maps em paralelo)
-                const cepDestino = document.getElementById("cep-destino").value.replace(/\D/g, "");
-                const numeroDestino = document.getElementById("numero-destino").value;
-                const geocodeQueryDestino = `${enderecoDestinoCompleto}, Número ${numeroDestino}, CEP ${cepDestino}`;
-                
-                const [coordBase, coordDestino] = await Promise.all([
-                    geocode(enderecoBase),
-                    geocode(geocodeQueryDestino),
-                ]); // Ambas são [lat, lon]
-
-                // 5. MONTAR PARES DE ROTA COM JITTER SELETIVO
-                let baseToOrigem = [coordBase, coordOrigem];
-                let origemToDestino = [coordOrigem, coordDestino];
-                let destinoToBase = [coordDestino, coordBase];
-                let jitterApplied = { 1: false, 2: false, 3: false };
-
-                // Aplica Jitter se a origem ou destino for a Base (ou se origem/destino forem o mesmo ponto)
-                if (JSON.stringify(coordBase) === JSON.stringify(coordOrigem)) {
-                    baseToOrigem = [coordBase, applyJitter(coordOrigem)];
-                    jitterApplied[1] = true;
-                }
-                if (JSON.stringify(coordOrigem) === JSON.stringify(coordDestino)) {
-                    origemToDestino = [coordOrigem, applyJitter(coordDestino)];
-                    jitterApplied[2] = true;
-                }
-                if (JSON.stringify(coordDestino) === JSON.stringify(coordBase)) {
-                    destinoToBase = [coordDestino, applyJitter(coordBase)];
-                    jitterApplied[3] = true;
-                }
-
-                // 6. Calcular Rotas (Google Maps em paralelo)
-                // Se safeRota falhar, a exceção é propagada para o bloco catch principal
-                const promiseDist1 = safeRota(baseToOrigem[0], baseToOrigem[1], jitterApplied[1]);
-                const promiseDist2 = safeRota(origemToDestino[0], origemToDestino[1], jitterApplied[2]);
-                const promiseDist3 = safeRota(destinoToBase[0], destinoToBase[1], jitterApplied[3]);
-
-                const [res1, res2, res3] = await Promise.all([
-                    promiseDist1,
-                    promiseDist2,
-                    promiseDist3,
-                ]);
-                
-                const dist1 = res1.distance;
-                const dist2 = res2.distance;
-                const dist3 = res3.distance;
-                
-                const fallback1 = res1.fallback;
-                const fallback2 = res2.fallback;
-                const fallback3 = res3.fallback;
-
-                // 7. Apresentar Resultado
-                const distanciaTotalKm = dist1 + dist2 + dist3;
-                const valorKm = distanciaTotalKm * 1.7; // R$ 1,70 por km
-                valorTotal = valorKm + taxa;
-                
-                const detalhesMoto = tipoVeiculo === "15" ? 
-                    ` (Cilindrada: ${document.getElementById("cilindrada-moto").value}cc)` : '';
-                
-                const notaFallback = "(Distância mínima de 0.2 km forçada devido a falha na rota)";
-                const textoDist1 = `Base → Origem: ${dist1.toFixed(2)} km${fallback1 ? ` ${notaFallback}` : ''}`;
-                const textoDist2 = `Origem → Destino: ${dist2.toFixed(2)} km${fallback2 ? ` ${notaFallback}` : ''}`;
-                const textoDist3 = `Destino → Base: ${dist3.toFixed(2)} km${fallback3 ? ` ${notaFallback}` : ''}`;
-                
-                document.getElementById("resultado").innerText =
-                    `API Utilizada: Google Maps Platform\n\n` +
-                    `📍 Coordenadas Utilizadas (Lat, Lon):\n` +
-                    `Base: ${coordsString(coordBase)}\n` +
-                    `Origem: ${coordsString(coordOrigem)}\n` +
-                    `Destino: ${coordsString(coordDestino)}\n\n` +
-                    `Detalhes da Rota:\n` +
-                    `${textoDist1}\n` +
-                    `${textoDist2}\n` +
-                    `${textoDist3}\n\n` +
-                    `Distância Total (ida e volta): ${distanciaTotalKm.toFixed(2)} km\n` +
-                    `Custo por KM (R$ 1,70/km): R$ ${valorKm.toFixed(2)}\n` +
-                    `Taxa Fixa (Veículo: ${tipoVeiculo === '50' ? 'Carro' : 'Moto'}${detalhesMoto}): R$ ${taxa.toFixed(2)}\n` +
-                    `\n💰 VALOR TOTAL ESTIMADO: R$ ${valorTotal.toFixed(2)}`;
-                
-                updateWhatsappButton(enderecoOrigemCompleto, enderecoDestinoCompleto, valorTotal);
-                
-            } catch (error) {
-                console.error("Erro no cálculo:", error);
-                
-                let userMessage = error.message;
-                const isApiKeyError = userMessage.includes("Status: REQUEST_DENIED") || userMessage.includes("API_KEY");
-                const isRefererError = userMessage.includes("API keys with referer restrictions cannot be used with this API.");
-
-                if (isRefererError) {
-                    userMessage = `Restrição de Referer HTTP. SOLUÇÃO: Remova a restrição de Referer da sua chave no Google Cloud Console (veja o checklist abaixo).`;
-                } else if (isApiKeyError) {
-                    userMessage = `Chave de API inválida ou faturamento desativado. Por favor, verifique o checklist de problemas abaixo.`;
-                } else if (userMessage.includes("Falha na requisição")) {
-                    userMessage = `Falha de rede ao acessar o Google Maps. Verifique sua conexão.`;
-                }
-
-                mostrarMensagemErro(`❌ Erro: ${userMessage}`); 
-                document.getElementById("resultado").innerText = "❌ Erro no cálculo. Consulte a mensagem acima e o checklist abaixo.";
-                document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
-            }
-        }
-
         function mostrarMensagemErro(msg) {
             const div = document.getElementById("mensagem-erro");
             div.style.display = "block";
@@ -595,7 +296,7 @@
             div.style.display = "none";
             div.textContent = "";
         }
-
+        
         function updateWhatsappButton(origem, destino, valor) {
             const btn = document.getElementById("whatsapp-solicitar-btn");
             const msg = encodeURIComponent(
@@ -609,6 +310,212 @@
             btn.onclick = () => {
                 window.open(`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${msg}`, '_blank');
             };
+        }
+        
+        // --- FUNÇÕES DE BUSCA/GEOCODING (Google Maps) ---
+        
+        function geocodeAddress(address) {
+            return new Promise((resolve, reject) => {
+                geocoder.geocode({ 'address': address }, (results, status) => {
+                    if (status === 'OK') {
+                        // Retorna o objeto LatLng e o endereço formatado
+                        resolve({ 
+                            location: results[0].geometry.location,
+                            formatted_address: results[0].formatted_address
+                        });
+                    } else if (status === 'ZERO_RESULTS') {
+                        reject(new Error(`Endereço não encontrado: "${address}"`));
+                    } else {
+                        reject(new Error(`Geocoding falhou com status: ${status}. (Verifique sua API Key e permissões)`));
+                    }
+                });
+            });
+        }
+        
+        function reverseGeocode(latlng) {
+            return new Promise((resolve, reject) => {
+                geocoder.geocode({ 'location': latlng }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        resolve(results[0].formatted_address);
+                    } else if (status === 'ZERO_RESULTS') {
+                        resolve(`Localização desconhecida: (${latlng.lat()}, ${latlng.lng()})`);
+                    } else {
+                        reject(new Error(`Geocoding Reverso falhou com status: ${status}`));
+                    }
+                });
+            });
+        }
+
+        async function buscarEnderecoPorCEP(cep, numero) {
+            limparMensagemErro(); 
+
+            // 1. Busca no ViaCEP (rápido para obter o texto do endereço)
+            const responseCep = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            if (!responseCep.ok) throw new Error(`Falha ao buscar CEP (Status HTTP: ${responseCep.status}).`);
+            
+            const dataCep = await responseCep.json();
+            if (dataCep.erro) throw new Error("CEP não encontrado.");
+
+            const enderecoCompleto = `${dataCep.logradouro}, ${numero} - ${dataCep.bairro}, ${dataCep.localidade} - ${dataCep.uf}`;
+            
+            // 2. Tentar geocodificar no Google Maps para validar
+            const fullQuery = `${enderecoCompleto}, CEP ${cep}`;
+            try {
+                await geocodeAddress(fullQuery); 
+            } catch (e) {
+                // Se falhar o geocoding, ainda retornamos o endereço, mas avisamos
+                console.warn(`Aviso: Endereço do CEP (${fullQuery}) não foi totalmente reconhecido pelo Google Maps Geocoder.`);
+            }
+            
+            return enderecoCompleto;
+        }
+        
+        // --- FUNÇÃO PRINCIPAL DE ROTA (Google Maps) ---
+        
+        function getDistance(origin, destination) {
+             return new Promise((resolve, reject) => {
+                const request = {
+                    origin: origin,       // LatLng ou String
+                    destination: destination, // LatLng ou String
+                    travelMode: google.maps.TravelMode.DRIVING,
+                    unitSystem: google.maps.UnitSystem.METRIC 
+                };
+                
+                directionsService.route(request, (response, status) => {
+                    if (status === 'OK') {
+                        const route = response.routes[0];
+                        // O Directions API retorna a distância em metros
+                        const distanceMeters = route.legs[0].distance.value; 
+                        resolve(distanceMeters / 1000); // Retorna em KM
+                    } else if (status === 'ZERO_RESULTS' || status === 'NOT_FOUND') {
+                        // Se a rota não for encontrada, tentamos uma pequena variação
+                        reject(new Error(`Rota não encontrada (Status: ${status}).`));
+                    } else {
+                        reject(new Error(`Directions API falhou: ${status}`));
+                    }
+                });
+            });
+        }
+
+        // --- FUNÇÃO DE CÁLCULO GERAL ---
+
+        async function calcular() {
+            limparMensagemErro(); 
+            
+            if (!isGoogleMapsReady) {
+                mostrarMensagemErro("❌ O Google Maps ainda não carregou ou falhou ao carregar o script. Verifique o console ou sua conexão.");
+                return;
+            }
+
+            document.getElementById("resultado").innerText = "Calculando...";
+            document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
+            
+            let tipoVeiculo;
+            let cilindrada = 0; 
+            let coordOrigem, coordDestino;
+            let origemAddress, destinoAddress;
+
+            try {
+                // 1. Obter e Validar Inputs
+                tipoVeiculo = document.getElementById("tipo").value;
+                if (!tipoVeiculo) throw new Error("Selecione o tipo de veículo.");
+
+                origemAddress = document.getElementById("origem").value; 
+                destinoAddress = document.getElementById("destino").value; 
+
+                if (!origemAddress || origemAddress.includes("Endereço gerado após")) throw new Error("Defina o endereço de Origem primeiro.");
+                if (!destinoAddress || destinoAddress.includes("Endereço gerado automaticamente")) throw new Error("Defina o endereço de Destino primeiro.");
+
+                if (tipoVeiculo === "15") {
+                    cilindrada = parseInt(document.getElementById("cilindrada-moto").value);
+                    if (isNaN(cilindrada)) throw new Error("Informe a cilindrada da moto.");
+                }
+                
+                // 2. Determinar Coordenadas de Origem (Prioriza Geolocalização salva)
+                const savedLon = parseFloat(document.getElementById("coord-origem-lon").value);
+                const savedLat = parseFloat(document.getElementById("coord-origem-lat").value);
+
+                if (!isNaN(savedLon) && !isNaN(savedLat)) {
+                    // ORIGEM: Geolocalização
+                    coordOrigem = new google.maps.LatLng(savedLat, savedLon);
+                } else {
+                    // ORIGEM: Geocodificação de Endereço/CEP
+                    const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
+                    const numeroOrigem = document.getElementById("numero-origem").value;
+                    const geocodeQueryOrigem = `${origemAddress}, ${numeroOrigem}, CEP ${cepOrigem}`;
+                    
+                    const result = await geocodeAddress(geocodeQueryOrigem);
+                    coordOrigem = result.location;
+                    origemAddress = result.formatted_address; // Usa o endereço formatado pelo Google
+                }
+
+                // 3. Geocodificar Destino
+                const cepDestino = document.getElementById("cep-destino").value.replace(/\D/g, "");
+                const numeroDestino = document.getElementById("numero-destino").value;
+                const geocodeQueryDestino = `${destinoAddress}, ${numeroDestino}, CEP ${cepDestino}`;
+                
+                const resultDestino = await geocodeAddress(geocodeQueryDestino);
+                coordDestino = resultDestino.location;
+                destinoAddress = resultDestino.formatted_address; // Usa o endereço formatado pelo Google
+                
+                // 4. Determinar Taxa Fixa
+                let taxa = 0;
+                if (tipoVeiculo === "50") taxa = 50;
+                else if (tipoVeiculo === "15") {
+                    if (cilindrada <= 160) taxa = 15;
+                    else if (cilindrada <= 250) taxa = 25;
+                    else if (cilindrada <= 499) taxa = 35;
+                    else if (cilindrada <= 999) taxa = 50;
+                    else taxa = 100;
+                }
+
+                // 5. Calcular Rotas (DirectionsService)
+                const coordBase = new google.maps.LatLng(BASE_ADDRESS.lat, BASE_ADDRESS.lng);
+                
+                const [dist1, dist2, dist3] = await Promise.all([
+                    getDistance(coordBase, coordOrigem),    // Base -> Origem
+                    getDistance(coordOrigem, coordDestino), // Origem -> Destino
+                    getDistance(coordDestino, coordBase)    // Destino -> Base
+                ]); 
+
+                // 6. Apresentar Resultado
+                const distanciaTotalKm = dist1 + dist2 + dist3;
+                const valorKm = distanciaTotalKm * 1.7; // R$ 1,70 por km
+                const valorTotal = valorKm + taxa;
+                
+                const detalhesMoto = tipoVeiculo === "15" ? 
+                    ` (Cilindrada: ${document.getElementById("cilindrada-moto").value}cc)` : '';
+                
+                document.getElementById("resultado").innerText =
+                    `API Utilizada: Google Maps Directions Service\n\n` +
+                    `Detalhes da Rota:\n` +
+                    `Base → Origem: ${dist1.toFixed(2)} km\n` +
+                    `Origem → Destino: ${dist2.toFixed(2)} km\n` +
+                    `Destino → Base: ${dist3.toFixed(2)} km\n\n` +
+                    `Distância Total (ida e volta): ${distanciaTotalKm.toFixed(2)} km\n` +
+                    `Custo por KM (R$ 1,70/km): R$ ${valorKm.toFixed(2)}\n` +
+                    `Taxa Fixa (Veículo: ${tipoVeiculo === '50' ? 'Carro' : 'Moto'}${detalhesMoto}): R$ ${taxa.toFixed(2)}\n` +
+                    `\n💰 VALOR TOTAL ESTIMADO: R$ ${valorTotal.toFixed(2)}`;
+                
+                updateWhatsappButton(origemAddress, destinoAddress, valorTotal);
+                
+            } catch (error) {
+                console.error("Erro no cálculo:", error);
+                
+                let userMessage = error.message;
+
+                if (userMessage.includes("NetworkError")) {
+                    userMessage = `Falha na requisição de rede (NetworkError). Isso é um bloqueio externo.`;
+                } else if (userMessage.includes("Status: REQUEST_DENIED") || userMessage.includes("InvalidKey")) {
+                    userMessage = `CHAVE INVÁLIDA (REQUEST_DENIED). Verifique se a chave está correta e APIs ativadas.`;
+                } else if (userMessage.includes("Status: OVER_QUERY_LIMIT")) {
+                    userMessage = `Limite de requisições excedido. Verifique o faturamento no Google Cloud Console.`;
+                }
+
+                mostrarMensagemErro(`❌ Erro: ${userMessage}`); 
+                document.getElementById("resultado").innerText = "❌ Erro no cálculo. Consulte a mensagem acima e o checklist de diagnóstico.";
+                document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
+            }
         }
 
         // === FLUXO DE BUSCA DE ENDEREÇO COM TOGGLE ===
@@ -642,6 +549,10 @@
         }
         
         async function buscarOrigemCEP() {
+            if (!isGoogleMapsReady) {
+                 mostrarMensagemErro("Aguardando Google Maps carregar...");
+                 return;
+            }
             limparMensagemErro();
             const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
             const numero = document.getElementById("numero-origem").value;
@@ -663,6 +574,10 @@
         }
 
         async function usarLocalizacaoAtual() {
+            if (!isGoogleMapsReady) {
+                 mostrarMensagemErro("Aguardando Google Maps carregar...");
+                 return;
+            }
             limparMensagemErro();
             document.getElementById("origem").value = "Buscando localização...";
             document.getElementById("btn-usar-localizacao").disabled = true;
@@ -686,8 +601,10 @@
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
                 
+                const latlng = { lat: lat, lng: lon };
+                
                 // 1. Tentar reverter as coordenadas para endereço de texto (Google Maps)
-                const enderecoTexto = await reverseGeocode(lat, lon);
+                const enderecoTexto = await reverseGeocode(latlng);
                 
                 // 2. Salvar as coordenadas reais nos campos hidden para usar no cálculo
                 document.getElementById("coord-origem-lon").value = lon;
@@ -715,6 +632,10 @@
         }
 
         async function buscarDestinoCEP() {
+            if (!isGoogleMapsReady) {
+                 mostrarMensagemErro("Aguardando Google Maps carregar...");
+                 return;
+            }
             limparMensagemErro();
             const cep = document.getElementById("cep-destino").value.replace(/\D/g, "");
             const numero = document.getElementById("numero-destino").value;
@@ -731,7 +652,7 @@
             }
         }
 
-        // === SETUP INICIAL ===
+        // --- SETUP INICIAL ---
         window.onload = function() {
             
             document.getElementById("btn-calcular").addEventListener("click", calcular);
@@ -762,15 +683,26 @@
             
             document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
             
-            if (API_KEY_GOOGLE === "YOUR_GOOGLE_MAPS_API_KEY") {
-                mostrarMensagemErro("⚠️ ATENÇÃO: A Chave de API do Google Maps está como placeholder. Por favor, edite o arquivo e insira sua chave no campo 'API_KEY_GOOGLE' no topo do bloco <script>.");
+            // Display da chave de API
+            const apiKeyDisplay = document.getElementById("api-key-display-value");
+            if (API_KEY_GOOGLE === "YOUR_GOOGLE_API_KEY") {
+                 mostrarMensagemErro("⚠️ ATENÇÃO: A Chave de API do Google Maps está como placeholder. Por favor, edite o arquivo e insira sua chave no campo 'API_KEY_GOOGLE' no topo do bloco <script>.");
+                 apiKeyDisplay.value = "Chave não configurada";
+            } else {
+                 apiKeyDisplay.value = API_KEY_GOOGLE.substring(0, 4) + "..." + API_KEY_GOOGLE.substring(API_KEY_GOOGLE.length - 4);
             }
             
-            // Atualiza o display da chave
-            const apiKeyDisplay = document.getElementById("api-key-display-value");
-            apiKeyDisplay.value = API_KEY_GOOGLE.substring(0, 4) + "..." + API_KEY_GOOGLE.substring(API_KEY_GOOGLE.length - 4);
-            if (API_KEY_GOOGLE === "YOUR_GOOGLE_MAPS_API_KEY") {
-                apiKeyDisplay.value = "Chave não configurada";
+            // Injeção do script do Google Maps
+            if (API_KEY_GOOGLE !== "YOUR_GOOGLE_API_KEY") {
+                 const script = document.createElement('script');
+                 script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY_GOOGLE}&libraries=geometry&callback=initMap`;
+                 script.onerror = () => {
+                     document.getElementById("loading-status").textContent = "Status: 🔴 FALHA DE REDE/CORS. O script do Google Maps não pôde ser carregado. Consulte o Checklist.";
+                     mostrarMensagemErro("❌ O script do Google Maps falhou ao carregar (Network Error/CORS). O cálculo não funcionará.");
+                 };
+                 document.head.appendChild(script);
+            } else {
+                 document.getElementById("loading-status").textContent = "Status: 🔴 API Key não configurada. Insira sua chave no código.";
             }
         };
     </script>
@@ -780,9 +712,11 @@
         <h1 class="logo-placeholder">🚚 Gbservice Reboque</h1>
         
         <div class="form-group">
-            <label for="api-key-display-value">Chave de API (4 dígitos iniciais/finais):</label>
+            <label for="api-key-display-value">API Key Google - 4 dígitos iniciais/finais:</label>
             <input type="text" id="api-key-display-value" value="" style="background-color: #e1f0ff; color: #0d47a1; font-weight: bold;"/>
         </div>
+        <p id="loading-status" class="loading-status">Status: 🟡 Carregando serviços do Google Maps...</p>
+
 
         <div id="mensagem-erro" class="mensagem-erro" style="display: none;"></div>
         
@@ -879,19 +813,13 @@
         <section class="section resultado-section" aria-live="polite" aria-atomic="true">
             <div id="resultado">Preencha todos os campos e clique em CALCULAR.</div>
             <div class="troubleshooting">
-                <h3>🛠️ Solução de Problemas com API do Google Maps</h3>
-                <p>Se o erro for sobre **Referer/Restrição** ou **REQUEST_DENIED**, verifique os seguintes 4 pontos no seu **Google Cloud Console**:</p>
+                <h3>🛠️ Checklist de Diagnóstico (Network Error)</h3>
+                <p>Se o erro de rede persistir (o cálculo não iniciar ou a mensagem de status permanecer 🔴), <strong>O PROBLEMA É EXTERNO</strong>:</p>
                 <ol>
-                    <li><strong>Chave (API Key):</strong> Certifique-se de que a chave inserida no código é exatamente a mesma que você gerou.</li>
-                    <li><strong>APIs Ativadas:</strong> Confirme que as seguintes APIs estão **ativadas** no seu projeto:
-                        <ul>
-                            <li>✅ **Geocoding API**</li>
-                            <li>✅ **Directions API**</li>
-                        </ul>
-                    </li>
-                    <li><strong>Faturamento (Billing):</strong> O faturamento (cartão de crédito) precisa estar **ativado** no projeto. O Google só cobra se você exceder o crédito mensal de \$200 USD.</li>
-                    <li><strong>🔴 Restrições de Chave (MAIS PROVÁVEL):</strong> Se a chave tem restrição de Referer HTTP, ela não funciona em ambientes sandbox. Para testes, mude a restrição de chave para **Nenhuma** (sem restrição) ou restrinja apenas por API (item 2). 
-                        <br/>**Se for usar restrição HTTP Referer, adicione `*` (asterisco) para permitir qualquer URL temporariamente.**</li>
+                    <li><strong>APIs Ativadas:</strong> Confirme que **Geocoding API** e **Directions API** estão ativadas no Google Cloud Console.</li>
+                    <li><strong>Faturamento:</strong> Confirme que o Cartão de Crédito está válido e o faturamento está ativo (um `OVER_QUERY_LIMIT` é gerado se estiver inativo).</li>
+                    <li><strong>Restrições de Referer (CRÍTICO):</strong> Na configuração da sua chave, em "Restrições de aplicativos", mude de "Referers HTTP (sites)" para **"Nenhum"** ou adicione o Referer **`*`** para testes (em ambientes de iframe restritos, isso é vital).</li>
+                    <li><strong>Rede Local:</strong> Tente usar uma VPN ou mudar de rede. Se a falha for na hora de carregar o script do Google Maps (`Status: 🔴 FALHA DE REDE`), é seu firewall ou um ad-blocker bloqueando o domínio `maps.googleapis.com`.</li>
                 </ol>
             </div>
         </section>
