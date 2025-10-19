@@ -79,7 +79,7 @@
             box-shadow: 0 0 5px rgba(26, 115, 232, 0.5);
         }
 
-        /* Botão */
+        /* Botão Padrão */
         button {
             cursor: pointer;
             background: #1a73e8;
@@ -100,23 +100,52 @@
             background: #155ab6;
             outline: none;
         }
+        
+        /* Estilização do Toggle de Escolha (CEP vs GEO) */
+        .input-toggle {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
 
-        .button-group {
+        .input-toggle > label {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #1a73e8;
+        }
+
+        .radio-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap; /* Garante responsividade */
+            flex-wrap: wrap;
         }
 
-        .button-group button {
-            flex: 1; /* Distribui o espaço entre os botões */
-            min-width: 150px; /* Garante que os botões não fiquem pequenos demais */
-            margin-top: 0;
+        .radio-group input[type="radio"] {
+            display: none;
         }
-        
-        .button-buscar {
-            /* Mantido para compatibilidade, mas agora usa .button-group */
+
+        .radio-group label {
+            flex-grow: 1;
+            text-align: center;
+            padding: 10px 15px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: white;
+            transition: all 0.2s ease;
+            font-weight: 600;
         }
+
+        .radio-group input[type="radio"]:checked + label {
+            background-color: #1a73e8;
+            color: white;
+            border-color: #1a73e8;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        /* Fim Estilização Toggle */
 
         #resultado {
             font-weight: 700;
@@ -144,7 +173,7 @@
             .container {
                 padding: 20px;
             }
-            .button-group button {
+            .radio-group label {
                 flex-basis: 100%;
             }
 
@@ -158,7 +187,7 @@
         }
 
         .whatsapp-button {
-            background-color: #25D366; /* Cor verde do WhatsApp */
+            background-color: #25D366; 
             color: white;
             border: none;
             padding: 14px 25px;
@@ -189,30 +218,7 @@
         #detalhes-moto .form-group {
             margin-bottom: 10px;
         }
-
-        .number-label {
-            width: 100%; 
-        }
         
-        .endereco-section .form-group:nth-child(2) input[type="number"], 
-        .destino-section .form-group:nth-child(2) input[type="number"] {
-            width: 100%;
-        }
-
-        .footer {
-            text-align: center;
-            padding: 20px 10px;
-            font-size: 0.95rem;
-            color: #777;
-            border-top: 1px solid #ddd;
-            margin-top: 40px;
-            background-color: #f9f9f9;
-            border-radius: 0 0 12px 12px;
-        }
-
-        .footer strong {
-            color: #1a73e8;
-        }
         .logo-placeholder {
             text-align: center;
             font-size: 2rem;
@@ -223,11 +229,12 @@
     </style>
     <script>
         // Configurações e Funções do JS
+        // Chave API: Esta chave é pública e deve ser usada apenas para fins de demonstração
         const API_KEY = "5b3ce3597851110001cf62489e24024317f24032483d474b971a0694"; 
         const enderecoBase = "R. Dom João VI, 6 - Santa Cruz, Rio de Janeiro - RJ";
         const WHATSAPP_NUMBER = "5521999999999"; 
 
-        // --- FUNÇÕES DE ROBUSTEZ DE REDE ---
+        // --- FUNÇÕES DE ROBUSTEZ DE REDE (Retry com Backoff) ---
         
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
@@ -315,9 +322,6 @@
         
         /**
          * Realiza Geocodificação Reversa (Coordenadas -> Texto)
-         * @param {number} lat Latitude.
-         * @param {number} lon Longitude.
-         * @returns {Promise<string>} Endereço completo em texto.
          */
         async function reverseGeocode(lat, lon) {
             const url = `https://api.openrouteservice.org/geocode/reverse?api_key=${API_KEY}&point.lon=${lon}&point.lat=${lat}`;
@@ -328,10 +332,8 @@
             
             if (!data.features?.length) throw new Error("Endereço não encontrado nas coordenadas.");
 
-            // Pega o endereço mais provável (primeira feature)
             const properties = data.features[0].properties;
             
-            // Tenta montar um endereço completo e limpo
             const addressParts = [
                 properties.housenumber,
                 properties.street,
@@ -390,7 +392,6 @@
             }
         }
 
-
         let valorTotal = 0;
         
         const coordsString = (coords) => `[Lon: ${coords[0].toFixed(5)}, Lat: ${coords[1].toFixed(5)}]`;
@@ -414,7 +415,7 @@
                 enderecoOrigemCompleto = document.getElementById("origem").value; 
                 enderecoDestinoCompleto = document.getElementById("destino").value; 
 
-                if (!enderecoOrigemCompleto) throw new Error("Defina o endereço de Origem (CEP ou Localização Atual).");
+                if (!enderecoOrigemCompleto) throw new Error("Defina o endereço de Origem (CEP ou Localização Atual) antes de calcular.");
                 if (!enderecoDestinoCompleto) throw new Error("Busque o endereço de Destino primeiro.");
 
                 if (tipoVeiculo === "15") {
@@ -429,7 +430,6 @@
                 if (!isNaN(savedLon) && !isNaN(savedLat)) {
                     // ORIGEM VEIO DA GEOLOCALIZAÇÃO
                     coordOrigem = [savedLon, savedLat];
-                    console.log("[COORD SOURCE] Origem obtida via Geolocation.");
                 } else {
                     // ORIGEM VEIO DO CEP/BUSCA (PRECISA DE FORWARD GEOCODING)
                     const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
@@ -437,7 +437,6 @@
                     const geocodeQueryOrigem = `${enderecoOrigemCompleto}, Número ${numeroOrigem}, CEP ${cepOrigem}`;
                     
                     coordOrigem = await geocode(geocodeQueryOrigem);
-                    console.log("[COORD SOURCE] Origem obtida via Forward Geocoding.");
                 }
 
                 // --- 2. Calcular Taxa Fixa ---
@@ -460,10 +459,6 @@
                     geocode(enderecoBase),
                     geocode(geocodeQueryDestino),
                 ]);
-                
-                console.log(`[COORD DEBUG] Base Coords: ${coordsString(coordBase)}`);
-                console.log(`[COORD DEBUG] Origem Coords: ${coordsString(coordOrigem)}`);
-                console.log(`[COORD DEBUG] Destino Coords: ${coordsString(coordDestino)}`);
 
                 // --- 4. MONTAR PARES DE ROTA COM JITTER SELETIVO ---
                 let baseToOrigem = [coordBase, coordOrigem];
@@ -567,8 +562,37 @@
             };
         }
 
-        // === FLUXO DE BUSCA DE ENDEREÇO ===
+        // === FLUXO DE BUSCA DE ENDEREÇO COM TOGGLE ===
+        
+        // Função para alternar a visibilidade dos blocos de input
+        function toggleOriginInput(choice) {
+            limparMensagemErro();
+            const cepBlock = document.getElementById("cep-input-block");
+            const geoBlock = document.getElementById("geo-input-block");
+            const origemField = document.getElementById("origem");
 
+            if (choice === 'cep') {
+                cepBlock.style.display = 'block';
+                geoBlock.style.display = 'none';
+                
+                // Limpar dados de Geolocalização (para evitar conflito no cálculo)
+                document.getElementById("coord-origem-lon").value = "";
+                document.getElementById("coord-origem-lat").value = "";
+                origemField.value = "";
+                origemField.placeholder = "Endereço gerado após busca por CEP";
+                
+            } else if (choice === 'geo') {
+                cepBlock.style.display = 'none';
+                geoBlock.style.display = 'block';
+                
+                // Limpar dados de CEP
+                document.getElementById("cep-origem").value = "";
+                document.getElementById("numero-origem").value = "";
+                origemField.value = "";
+                origemField.placeholder = "Endereço gerado após obter Localização Atual";
+            }
+        }
+        
         async function buscarOrigemCEP() {
             limparMensagemErro();
             const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
@@ -578,7 +602,7 @@
                  return;
             }
             try {
-                // Limpa coordenadas salvas (indicando que a origem é agora via CEP)
+                // Assegura que as coordenadas estão limpas para forçar o Geocoding
                 document.getElementById("coord-origem-lon").value = "";
                 document.getElementById("coord-origem-lat").value = "";
                 
@@ -593,10 +617,12 @@
         async function usarLocalizacaoAtual() {
             limparMensagemErro();
             document.getElementById("origem").value = "Buscando localização...";
+            document.getElementById("btn-usar-localizacao").disabled = true;
 
             if (!navigator.geolocation) {
                 mostrarMensagemErro("Seu navegador não suporta geolocalização.");
                 document.getElementById("origem").value = "";
+                document.getElementById("btn-usar-localizacao").disabled = false;
                 return;
             }
 
@@ -619,9 +645,7 @@
                 document.getElementById("coord-origem-lon").value = lon;
                 document.getElementById("coord-origem-lat").value = lat;
 
-                // 3. Limpar CEP/Número e popular campo de endereço
-                document.getElementById("cep-origem").value = "";
-                document.getElementById("numero-origem").value = "";
+                // 3. Limpar CEP/Número (já feito no toggle, mas reforça) e popular campo de endereço
                 document.getElementById("origem").value = `(LOCALIZAÇÃO ATUAL) ${enderecoTexto}`;
                 
             } catch (error) {
@@ -631,13 +655,14 @@
                 } else if (error.code === 3) {
                     msg = "Tempo limite excedido para obter localização.";
                 } else {
-                    // Erro vindo do reverseGeocode (NetworkError ou Endereço não encontrado)
                     msg = `Falha na geolocalização ou no reconhecimento do endereço: ${error.message}`;
                 }
                 mostrarMensagemErro(`❌ ${msg}`);
                 document.getElementById("origem").value = "";
                 document.getElementById("coord-origem-lon").value = "";
                 document.getElementById("coord-origem-lat").value = "";
+            } finally {
+                document.getElementById("btn-usar-localizacao").disabled = false;
             }
         }
 
@@ -650,8 +675,8 @@
                  return;
             }
             try {
-                const response = await buscarEnderecoPorCEP(cep, numero);
-                document.getElementById("destino").value = response;
+                const end = await buscarEnderecoPorCEP(cep, numero);
+                document.getElementById("destino").value = end;
             } catch (e) {
                 mostrarMensagemErro(e.message);
                 document.getElementById("destino").value = "";
@@ -663,12 +688,18 @@
             
             document.getElementById("btn-calcular").addEventListener("click", calcular);
             
-            // Novos Listeners para os botões de Origem
+            // Listeners para os botões de busca
             document.getElementById("btn-buscar-origem-cep").addEventListener("click", buscarOrigemCEP);
             document.getElementById("btn-usar-localizacao").addEventListener("click", usarLocalizacaoAtual);
-
-            // Listener para o botão de Destino (mantém o nome da função)
             document.getElementById("btn-buscar-destino").addEventListener("click", buscarDestinoCEP);
+            
+            // Listener para o Radio Group (Alternância)
+            document.querySelectorAll('input[name="origin-choice"]').forEach(radio => {
+                radio.addEventListener('change', (e) => toggleOriginInput(e.target.value));
+            });
+            
+            // Inicializa o estado (mostra CEP por padrão)
+            toggleOriginInput('cep');
 
             document.getElementById("tipo").addEventListener("change", e => {
                 const showMoto = e.target.value === "15";
@@ -697,22 +728,39 @@
 
         <section class="section endereco-section">
             <h2>Local do Veículo (Origem)</h2>
-            <div class="form-group">
-                <label for="cep-origem">CEP:</label>
-                <input type="text" id="cep-origem" placeholder="Digite o CEP de onde o veículo está" maxlength="8" autocomplete="postal-code" />
+            
+            <div class="input-toggle">
+                <label>Como deseja informar a Origem?</label>
+                <div class="radio-group">
+                    <input type="radio" id="choice-cep" name="origin-choice" value="cep" checked>
+                    <label for="choice-cep">CEP / Endereço</label>
+                    
+                    <input type="radio" id="choice-geo" name="origin-choice" value="geo">
+                    <label for="choice-geo">Localização Atual</label>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="numero-origem">Número (Se aplicável):</label>
-                <input type="number" class="number-label" id="numero-origem" placeholder="Número" autocomplete="address-level1" />
+
+            <!-- BLOCO DE INPUT POR CEP/ENDEREÇO -->
+            <div id="cep-input-block" class="input-block">
+                <div class="form-group">
+                    <label for="cep-origem">CEP:</label>
+                    <input type="text" id="cep-origem" placeholder="Ex: 23560000" maxlength="8" autocomplete="postal-code" />
+                </div>
+                <div class="form-group">
+                    <label for="numero-origem">Número:</label>
+                    <input type="number" id="numero-origem" placeholder="Número do endereço" autocomplete="address-level1" />
+                </div>
+                <button id="btn-buscar-origem-cep" type="button">Buscar Endereço</button>
+            </div>
+
+            <!-- BLOCO DE INPUT POR GEOLOCALIZAÇÃO -->
+            <div id="geo-input-block" class="input-block" style="display: none;">
+                <button id="btn-usar-localizacao" type="button" style="background-color: #38a169; margin-bottom: 10px;">
+                    Usar Minha Localização Atual
+                </button>
             </div>
             
-            <div class="button-group">
-                 <!-- Botão de buscar CEP RENOMEADO -->
-                <button id="btn-buscar-origem-cep" type="button">Buscar por CEP</button>
-                <!-- NOVO BOTÃO DE GEOLOCALIZAÇÃO -->
-                <button id="btn-usar-localizacao" type="button" style="background-color: #38a169;">Usar Localização Atual</button>
-            </div>
-            
+            <!-- CAMPO DE ENDEREÇO RESULTANTE (comum aos dois métodos) -->
             <div class="form-group">
                 <label for="origem">Endereço completo (Gerado automaticamente):</label>
                 <input disabled type="text" id="origem" placeholder="Endereço gerado após busca ou localização" autocomplete="street-address" />
@@ -727,7 +775,7 @@
             </div>
             <div class="form-group">
                 <label for="numero-destino">Número:</label>
-                <input type="number" class="number-label" id="numero-destino" placeholder="Número" autocomplete="address-level1" />
+                <input type="number" id="numero-destino" placeholder="Número" autocomplete="address-level1" />
             </div>
             
             <button id="btn-buscar-destino" type="button" class="button-buscar">Buscar Endereço de Destino</button>
@@ -755,7 +803,7 @@
                 </div>
                 <div class="form-group">
                     <label for="cilindrada-moto">Cilindrada:</label>
-                    <input type="number" class="number-label" id="cilindrada-moto" placeholder="Ex.: 160" />
+                    <input type="number" id="cilindrada-moto" placeholder="Ex.: 160" />
                 </div>
             </div>
         </section>
