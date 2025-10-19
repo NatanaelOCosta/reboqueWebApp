@@ -205,41 +205,7 @@
             color: #1a73e8;
             margin-bottom: 20px;
         }
-
-        /* Estilo para a caixa de problemas */
-        .troubleshooting {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px dashed #0c7b93;
-            background-color: #e6f6f9;
-            border-radius: 8px;
-            font-size: 0.9rem;
-        }
-        .troubleshooting h3 {
-            color: #0c7b93;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
-        .troubleshooting ol {
-            padding-left: 20px;
-            margin-top: 5px;
-        }
-        .troubleshooting li {
-            margin-bottom: 5px;
-            line-height: 1.4;
-        }
-
-        .troubleshooting strong {
-            color: #0d47a1;
-        }
         
-        .loading-status {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #f90;
-            margin-bottom: 15px;
-        }
-
         /* Responsividade */
         @media (max-width: 480px) {
             .container {
@@ -261,13 +227,13 @@
     <script>
         // =================================================================
         // ATENÇÃO: CHAVE DE API DO GOOGLE MAPS
-        // Insira sua chave de API do Google Maps.
+        // Esta é a chave que você inseriu. Mantenha-a segura.
         // =================================================================
-        const API_KEY_GOOGLE = "AIzaSyBwd9QQquprtp9WM-M3KlzXe6rOKAy41Ns"; // <<-- INSIRA SUA CHAVE GOOGLE AQUI -->>
+        const API_KEY_GOOGLE = "AIzaSyBwd9QQquprtp9WM-M3KlzXe6rOKAy41Ns";
         
         // Coordenadas da Base (R. Dom João VI, 6 - Santa Cruz, RJ)
         const BASE_ADDRESS = { lat: -22.923831, lng: -43.682701 };
-        const WHATSAPP_NUMBER = "5521999999999"; 
+        const WHATSAPP_NUMBER = "552141014470"; 
         
         // Variáveis globais para os serviços do Google Maps
         let geocoder;
@@ -279,7 +245,6 @@
             geocoder = new google.maps.Geocoder();
             directionsService = new google.maps.DirectionsService();
             isGoogleMapsReady = true;
-            document.getElementById("loading-status").textContent = "Status: 🟢 Serviços do Google Maps prontos.";
             console.log("Serviços do Google Maps inicializados.");
         }
 
@@ -326,7 +291,7 @@
                     } else if (status === 'ZERO_RESULTS') {
                         reject(new Error(`Endereço não encontrado: "${address}"`));
                     } else {
-                        reject(new Error(`Geocoding falhou com status: ${status}. (Verifique sua API Key e permissões)`));
+                        reject(new Error(`Falha na busca do endereço com status: ${status}.`));
                     }
                 });
             });
@@ -340,7 +305,7 @@
                     } else if (status === 'ZERO_RESULTS') {
                         resolve(`Localização desconhecida: (${latlng.lat()}, ${latlng.lng()})`);
                     } else {
-                        reject(new Error(`Geocoding Reverso falhou com status: ${status}`));
+                        reject(new Error(`Falha no Geocoding Reverso com status: ${status}`));
                     }
                 });
             });
@@ -361,9 +326,9 @@
             // 2. Tentar geocodificar no Google Maps para validar
             const fullQuery = `${enderecoCompleto}, CEP ${cep}`;
             try {
+                // Apenas chama para validar, não usa o retorno aqui
                 await geocodeAddress(fullQuery); 
             } catch (e) {
-                // Se falhar o geocoding, ainda retornamos o endereço, mas avisamos
                 console.warn(`Aviso: Endereço do CEP (${fullQuery}) não foi totalmente reconhecido pelo Google Maps Geocoder.`);
             }
             
@@ -388,10 +353,9 @@
                         const distanceMeters = route.legs[0].distance.value; 
                         resolve(distanceMeters / 1000); // Retorna em KM
                     } else if (status === 'ZERO_RESULTS' || status === 'NOT_FOUND') {
-                        // Se a rota não for encontrada, tentamos uma pequena variação
                         reject(new Error(`Rota não encontrada (Status: ${status}).`));
                     } else {
-                        reject(new Error(`Directions API falhou: ${status}`));
+                        reject(new Error(`Falha ao calcular rota: ${status}`));
                     }
                 });
             });
@@ -403,7 +367,7 @@
             limparMensagemErro(); 
             
             if (!isGoogleMapsReady) {
-                mostrarMensagemErro("❌ O Google Maps ainda não carregou ou falhou ao carregar o script. Verifique o console ou sua conexão.");
+                mostrarMensagemErro("❌ Os serviços de mapa ainda não estão prontos. Tente recarregar a página.");
                 return;
             }
 
@@ -442,7 +406,8 @@
                     // ORIGEM: Geocodificação de Endereço/CEP
                     const cepOrigem = document.getElementById("cep-origem").value.replace(/\D/g, "");
                     const numeroOrigem = document.getElementById("numero-origem").value;
-                    const geocodeQueryOrigem = `${origemAddress}, ${numeroOrigem}, CEP ${cepOrigem}`;
+                    // Usamos o endereço formatado no campo disabled, se não for localização atual.
+                    const geocodeQueryOrigem = `${origemAddress}, ${numeroOrigem}, CEP ${cepOrigem}`; 
                     
                     const result = await geocodeAddress(geocodeQueryOrigem);
                     coordOrigem = result.location;
@@ -487,7 +452,6 @@
                     ` (Cilindrada: ${document.getElementById("cilindrada-moto").value}cc)` : '';
                 
                 document.getElementById("resultado").innerText =
-                    `API Utilizada: Google Maps Directions Service\n\n` +
                     `Detalhes da Rota:\n` +
                     `Base → Origem: ${dist1.toFixed(2)} km\n` +
                     `Origem → Destino: ${dist2.toFixed(2)} km\n` +
@@ -504,16 +468,21 @@
                 
                 let userMessage = error.message;
 
+                // Simplificação das mensagens de erro para o usuário final
                 if (userMessage.includes("NetworkError")) {
-                    userMessage = `Falha na requisição de rede (NetworkError). Isso é um bloqueio externo.`;
-                } else if (userMessage.includes("Status: REQUEST_DENIED") || userMessage.includes("InvalidKey")) {
-                    userMessage = `CHAVE INVÁLIDA (REQUEST_DENIED). Verifique se a chave está correta e APIs ativadas.`;
-                } else if (userMessage.includes("Status: OVER_QUERY_LIMIT")) {
-                    userMessage = `Limite de requisições excedido. Verifique o faturamento no Google Cloud Console.`;
+                    userMessage = `Falha de conexão. Verifique sua rede.`;
+                } else if (userMessage.includes("REQUEST_DENIED") || userMessage.includes("InvalidKey")) {
+                    userMessage = `Falha de autenticação com o mapa. Chave de API inválida ou sem permissão.`;
+                } else if (userMessage.includes("OVER_QUERY_LIMIT")) {
+                    userMessage = `O limite de cálculos foi atingido. Tente novamente mais tarde.`;
+                } else if (userMessage.includes("Rota não encontrada")) {
+                    userMessage = `Não foi possível traçar a rota. Verifique a precisão dos endereços.`;
+                } else if (userMessage.includes("Endereço não encontrado")) {
+                     userMessage = `O endereço fornecido não foi reconhecido. Tente outro formato ou CEP.`;
                 }
 
                 mostrarMensagemErro(`❌ Erro: ${userMessage}`); 
-                document.getElementById("resultado").innerText = "❌ Erro no cálculo. Consulte a mensagem acima e o checklist de diagnóstico.";
+                document.getElementById("resultado").innerText = "❌ Erro no cálculo. Verifique a mensagem acima.";
                 document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
             }
         }
@@ -550,7 +519,7 @@
         
         async function buscarOrigemCEP() {
             if (!isGoogleMapsReady) {
-                 mostrarMensagemErro("Aguardando Google Maps carregar...");
+                 mostrarMensagemErro("❌ Os serviços de mapa ainda não estão prontos.");
                  return;
             }
             limparMensagemErro();
@@ -575,7 +544,7 @@
 
         async function usarLocalizacaoAtual() {
             if (!isGoogleMapsReady) {
-                 mostrarMensagemErro("Aguardando Google Maps carregar...");
+                 mostrarMensagemErro("❌ Os serviços de mapa ainda não estão prontos.");
                  return;
             }
             limparMensagemErro();
@@ -583,7 +552,7 @@
             document.getElementById("btn-usar-localizacao").disabled = true;
 
             if (!navigator.geolocation) {
-                mostrarMensagemErro("Seu navegador não suporta geolocalização.");
+                mostrarMensagemErro("❌ Seu navegador não suporta geolocalização.");
                 document.getElementById("origem").value = "";
                 document.getElementById("btn-usar-localizacao").disabled = false;
                 return;
@@ -620,7 +589,7 @@
                 } else if (error.code === 3) {
                     msg = "Tempo limite excedido para obter localização.";
                 } else {
-                    msg = `Falha na geolocalização ou no reconhecimento do endereço: ${error.message}`;
+                    msg = `Falha na geolocalização: ${error.message}`;
                 }
                 mostrarMensagemErro(`❌ ${msg}`);
                 document.getElementById("origem").value = "";
@@ -633,7 +602,7 @@
 
         async function buscarDestinoCEP() {
             if (!isGoogleMapsReady) {
-                 mostrarMensagemErro("Aguardando Google Maps carregar...");
+                 mostrarMensagemErro("❌ Os serviços de mapa ainda não estão prontos.");
                  return;
             }
             limparMensagemErro();
@@ -683,26 +652,16 @@
             
             document.getElementById("whatsapp-solicitar-btn").setAttribute('disabled', 'true');
             
-            // Display da chave de API
-            const apiKeyDisplay = document.getElementById("api-key-display-value");
-            if (API_KEY_GOOGLE === "YOUR_GOOGLE_API_KEY") {
-                 mostrarMensagemErro("⚠️ ATENÇÃO: A Chave de API do Google Maps está como placeholder. Por favor, edite o arquivo e insira sua chave no campo 'API_KEY_GOOGLE' no topo do bloco <script>.");
-                 apiKeyDisplay.value = "Chave não configurada";
-            } else {
-                 apiKeyDisplay.value = API_KEY_GOOGLE.substring(0, 4) + "..." + API_KEY_GOOGLE.substring(API_KEY_GOOGLE.length - 4);
-            }
-            
             // Injeção do script do Google Maps
-            if (API_KEY_GOOGLE !== "YOUR_GOOGLE_API_KEY") {
+            if (API_KEY_GOOGLE) {
                  const script = document.createElement('script');
                  script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY_GOOGLE}&libraries=geometry&callback=initMap`;
                  script.onerror = () => {
-                     document.getElementById("loading-status").textContent = "Status: 🔴 FALHA DE REDE/CORS. O script do Google Maps não pôde ser carregado. Consulte o Checklist.";
-                     mostrarMensagemErro("❌ O script do Google Maps falhou ao carregar (Network Error/CORS). O cálculo não funcionará.");
+                     mostrarMensagemErro("❌ Falha no carregamento dos serviços de mapa. Tente recarregar a página."); 
                  };
                  document.head.appendChild(script);
             } else {
-                 document.getElementById("loading-status").textContent = "Status: 🔴 API Key não configurada. Insira sua chave no código.";
+                 mostrarMensagemErro("❌ Chave de API de mapa não configurada. O cálculo não funcionará.");
             }
         };
     </script>
@@ -711,12 +670,7 @@
     <main class="container">
         <h1 class="logo-placeholder">🚚 Gbservice Reboque</h1>
         
-        <div class="form-group">
-            <label for="api-key-display-value">API Key Google - 4 dígitos iniciais/finais:</label>
-            <input type="text" id="api-key-display-value" value="" style="background-color: #e1f0ff; color: #0d47a1; font-weight: bold;"/>
-        </div>
-        <p id="loading-status" class="loading-status">Status: 🟡 Carregando serviços do Google Maps...</p>
-
+        <!-- O campo de API Key e status de carregamento foi removido -->
 
         <div id="mensagem-erro" class="mensagem-erro" style="display: none;"></div>
         
@@ -812,16 +766,7 @@
 
         <section class="section resultado-section" aria-live="polite" aria-atomic="true">
             <div id="resultado">Preencha todos os campos e clique em CALCULAR.</div>
-            <div class="troubleshooting">
-                <h3>🛠️ Checklist de Diagnóstico (Network Error)</h3>
-                <p>Se o erro de rede persistir (o cálculo não iniciar ou a mensagem de status permanecer 🔴), <strong>O PROBLEMA É EXTERNO</strong>:</p>
-                <ol>
-                    <li><strong>APIs Ativadas:</strong> Confirme que **Geocoding API** e **Directions API** estão ativadas no Google Cloud Console.</li>
-                    <li><strong>Faturamento:</strong> Confirme que o Cartão de Crédito está válido e o faturamento está ativo (um `OVER_QUERY_LIMIT` é gerado se estiver inativo).</li>
-                    <li><strong>Restrições de Referer (CRÍTICO):</strong> Na configuração da sua chave, em "Restrições de aplicativos", mude de "Referers HTTP (sites)" para **"Nenhum"** ou adicione o Referer **`*`** para testes (em ambientes de iframe restritos, isso é vital).</li>
-                    <li><strong>Rede Local:</strong> Tente usar uma VPN ou mudar de rede. Se a falha for na hora de carregar o script do Google Maps (`Status: 🔴 FALHA DE REDE`), é seu firewall ou um ad-blocker bloqueando o domínio `maps.googleapis.com`.</li>
-                </ol>
-            </div>
+            <!-- O Checklist de Diagnóstico foi removido -->
         </section>
 
         <section class="section whatsapp-section">
