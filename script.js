@@ -30,7 +30,8 @@ async function validarEndereco(enderecoCompleto) {
     if (!coords) return false;
 
     const [lon, lat] = coords;
-    return lat < 6 && lat > -35 && lon >= -75 && lon <= -34;
+    // Corrigido: Brasil entre lat -35 e +6 / lon -75 e -34
+    return lat <= 6 && lat >= -35 && lon >= -75 && lon <= -34;
   } catch (error) {
     console.warn("Endereço inválido:", enderecoCompleto, error.message);
     return false;
@@ -56,7 +57,8 @@ async function geocode(endereco) {
 }
 
 async function rota(pontoA, pontoB) {
-  const body = { coordinates: [pontoA, pontoB] };
+  // Garante formato correto [longitude, latitude]
+  const body = { coordinates: [ [pontoA[0], pontoA[1]], [pontoB[0], pontoB[1]] ] };
 
   const response = await fetch(
     "https://api.openrouteservice.org/v2/directions/driving-car",
@@ -80,7 +82,7 @@ async function rota(pontoA, pontoB) {
     throw new Error("Rota não encontrada.");
   }
 
-  return data.routes[0].summary.distance / 1000; // em km
+  return data.routes[0].summary.distance / 1000; // km
 }
 
 let valorTotal = 0;
@@ -147,9 +149,14 @@ async function calcular() {
   document.getElementById("resultado").innerText = "Calculando...";
 
   try {
+    // Reuso de geocodificação
     const coordBase = await geocode(enderecoBase);
     const coordOrigem = await geocode(enderecoOrigemCompleto);
     const coordDestino = await geocode(enderecoDestinoCompleto);
+
+    console.log("Coordenadas base:", coordBase);
+    console.log("Coordenadas origem:", coordOrigem);
+    console.log("Coordenadas destino:", coordDestino);
 
     const distanciaBaseOrigem = await rota(coordBase, coordOrigem);
     const distanciaOrigemDestino = await rota(coordOrigem, coordDestino);
@@ -157,7 +164,7 @@ async function calcular() {
 
     const distanciaTotalKm = distanciaBaseOrigem + distanciaOrigemDestino + distanciaDestinoBase;
     const valorKm = distanciaTotalKm * 1.7;
-    const valorTotal = valorKm + taxa;
+    valorTotal = valorKm + taxa; // usa variável global
 
     document.getElementById("resultado").innerText =
       `Distância da Base até a Origem: ${distanciaBaseOrigem.toFixed(2)} km\n` +
@@ -191,13 +198,6 @@ document.getElementById("tipo").addEventListener("change", function () {
   const detalhesMoto = document.getElementById("detalhes-moto");
   detalhesMoto.style.display = tipo === "15" ? "block" : "none";
 });
-
-/*function abrirWhatsApp() {
-  const mensagem = document.getElementById("resultado").innerText;
-  const numero = "5521999999999"; // Substitua pelo número real com DDI
-  const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-  window.open(url, "_blank");
-}*/
 
 async function buscarEnderecoOrigem() {
   const cep = document.getElementById("cep-origem").value.replace(/\D/g, "");
@@ -255,7 +255,6 @@ document.addEventListener('DOMContentLoaded', function() {
       `Destino do Reboque:%0ACEP: ${cepDestino}%0AEndereço de Destino: ${ruaDestino}%0A%0A` +
       `Tipo de Veículo: ${tipo}%0A%0A` +
       `Valor Estimado: R$ ${valorTotal ? valorTotal.toFixed(2) : '0,00'}`;
-      
 
     if (tipoSelect.value === "15") {
       mensagemWhatsApp += `%0AMarca da Moto: ${marcaMoto}%0AModelo da Moto: ${modeloMoto}%0ACilindrada da Moto: ${cilindradaMoto}`;
@@ -270,4 +269,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
 document.getElementById("btn-buscar-origem").addEventListener("click", buscarEnderecoOrigem);
 document.getElementById("btn-buscar-destino").addEventListener("click", buscarEnderecoDestino);
-//document.getElementById("btn-whatsapp").addEventListener("click", abrirWhatsApp);
