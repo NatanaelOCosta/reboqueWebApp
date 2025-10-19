@@ -117,6 +117,7 @@
             margin-bottom: 10px;
             color: #444;
             font-weight: bold;
+            text-align: center;
         }
 
         .radio-group {
@@ -1028,7 +1029,7 @@
                     map.setZoom(14); 
                 }
                 
-                document.getElementById("map-status").textContent = `Modo Ativo: CLIQUE no mapa para definir o ponto de DESTINO.`;
+                document.getElementById("map-status").textContent = `Clique no mapa para definir o local de destino.`;
                 if (destinationMarker) destinationMarker.setVisible(true);
                 
                 mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1200,12 +1201,12 @@
                     <label for="input-endereco-origem">Informe a Rua/Avenida:</label>
                     <!-- O valor permanecerá aqui após a seleção -->
                     <input type="text" id="input-endereco-origem" placeholder="Ex: Av. Brasil" /> 
-                    <small style="color: #666; margin-top: 5px;">Selecione uma sugestão da lista.</small>
+                    <small style="color: #666; margin-top: 5px;">Comece a digitar para selecionar o endereço</small>
                 </div>
                 <div class="form-group">
                     <label for="numero-origem-auto">Número:</label>
                     <input type="number" id="numero-origem-auto" placeholder="Número do endereço (Obrigatório)" required />
-                    <small style="color: #666; margin-top: 5px;">O endereço completo formatado aparecerá no campo abaixo.</small>
+                    <small style="color: #666; margin-top: 5px;">O endereço completo será preenchido no campo abaixo automaticamente</small>
                 </div>
             </div>
 
@@ -1214,23 +1215,23 @@
             
             <!-- CAMPO DE ENDEREÇO RESULTANTE (comum aos métodos) -->
             <div class="form-group">
-                <label for="origem">Endereço de Origem (Gerado automaticamente):</label>
+                <!-- <label for="origem">Endereço de Origem (Gerado automaticamente):</label> -->
                 <!-- Este campo agora mostra a formatação correta e sem o sufixo (CONFIRMADO) -->
                 <input disabled type="text" id="origem" placeholder="Endereço completo será gerado após selecionar a rua e informar o número." autocomplete="street-address" />
             </div>
         </section>
 
         <section class="section destino-section">
-            <h2>Destino do Reboque</h2>
+            <h2>Para onde deseja levar?</h2>
             
             <div class="input-toggle">
-                <label>Como deseja informar o Destino?</label>
+                <label>Como deseja informar o destino?</label>
                 <div class="radio-group">
                     <input type="radio" id="choice-dest-auto" name="destination-choice" value="auto" checked>
                     <label for="choice-dest-auto">Digitar endereço</label>
                     
                     <input type="radio" id="choice-dest-map" name="destination-choice" value="map">
-                    <label for="choice-dest-map">Selecionar no mapa</label> <!-- AJUSTADO para consistência -->
+                    <label for="choice-dest-map">Selecionar no mapa</label>
                 </div>
             </div>
             
@@ -1239,12 +1240,12 @@
                 <div class="form-group">
                     <label for="input-endereco-destino">Informe a Rua/Avenida:</label>
                     <input type="text" id="input-endereco-destino" placeholder="Ex: Av. Rio Branco" />
-                    <small style="color: #666; margin-top: 5px;">Selecione uma sugestão da lista.</small>
+                    <small style="color: #666; margin-top: 5px;">Comece a digitar para selecionar o endereço</small>
                 </div>
                 <div class="form-group">
                     <label for="numero-destino-auto">Número:</label>
                     <input type="number" id="numero-destino-auto" placeholder="Número do endereço (Obrigatório)" required />
-                    <small style="color: #666; margin-top: 5px;">O endereço completo formatado aparecerá no campo abaixo.</small>
+                    <small style="color: #666; margin-top: 5px;">O endereço completo será preenchido no campo abaixo automaticamente</small>
                 </div>
             </div>
 
@@ -1252,7 +1253,7 @@
             <div id="destination-map-placeholder"></div>
             
             <div class="form-group" style="margin-top: 15px;">
-                <label for="destino">Endereço de destino (Gerado automaticamente):</label>
+                <!-- <label for="destino">Endereço de destino (Gerado automaticamente):</label> -->
                 <!-- Este campo agora mostra a formatação correta e sem o sufixo (CONFIRMADO) -->
                 <input disabled type="text" id="destino" placeholder="Endereço completo será gerado após selecionar a rua e informar o número." autocomplete="address-line1" />
             </div>
@@ -1285,7 +1286,7 @@
         <section id="map-interaction-section" class="section" style="display: none;">
             <div id="map-canvas"></div> <!-- O mapa aparece primeiro -->
             <div class="map-controls">
-                 <p id="map-status" class="map-status">Clique no mapa para definir o ponto.</p>
+                 <p id="map-status" class="map-status">Clique no mapa para definir o local</p>
                  <button id="btn-confirmar-mapa" type="button">Confirmar Localização</button>
             </div>
         </section>
