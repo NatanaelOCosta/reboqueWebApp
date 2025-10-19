@@ -85,6 +85,10 @@
             background: #1a73e8;
             color: white;
             border: none;
+            /* Garante que o texto dentro do botão esteja centralizado */
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 14px 25px;
             font-size: 1.1rem;
             border-radius: 10px;
@@ -1029,7 +1033,7 @@
                 
                 mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 destinoField.placeholder = "Endereço definido pelo mapa (Aguardando Confirmação)";
-                // Limpa inputs de Autocomplete ao mudar de modo
+                // Limpa inputs de Autocomplete ao usar mapa
                 document.getElementById("numero-destino-auto").value = "";
                 document.getElementById("input-endereco-destino").value = "";
 
@@ -1109,7 +1113,7 @@
             
             // Listener para o campo de número da Origem (PARA ATUALIZAR O CAMPO VISÍVEL)
             document.getElementById("numero-origem-auto").addEventListener("input", updateOriginDisplayAddress);
-            // Listener para o campo de número do Destino (PARA ATUALIZAR O CAMPO VISÍVEL)
+            // Listener para o campo de número do Destino (PARA ATUALIZar O CAMPO VISÍVEL)
             document.getElementById("numero-destino-auto").addEventListener("input", updateDestinationDisplayAddress);
 
             
@@ -1177,23 +1181,23 @@
         <input type="hidden" id="base-address-destino" value="" /> <!-- Armazena o objeto Place (JSON) -->
 
         <section class="section endereco-section">
-            <h2>Local do Veículo (Origem)</h2>
+            <h2>Onde o veículo está?</h2>
             
             <div class="input-toggle">
-                <label>Como deseja informar a Origem?</label>
+                <label>Como deseja informar?</label>
                 <div class="radio-group">
                     <input type="radio" id="choice-origem-auto" name="origin-choice" value="auto" checked>
                     <label for="choice-origem-auto">Digitar endereço</label>
                     
                     <input type="radio" id="choice-origem-map" name="origin-choice" value="map">
-                    <label for="choice-origem-map">Selecionar no Mapa (Usa GPS)</label>
+                    <label for="choice-origem-map">Selecionar no mapa</label> <!-- AJUSTADO -->
                 </div>
             </div>
             
             <!-- BLOCO DE AUTOCOMPLETE (Origem) com Número Adicionado -->
             <div id="origin-autocomplete-block" class="input-block">
                 <div class="form-group">
-                    <label for="input-endereco-origem">Digite a Rua/Avenida (Será autocompletado):</label>
+                    <label for="input-endereco-origem">Informe a Rua/Avenida:</label>
                     <!-- O valor permanecerá aqui após a seleção -->
                     <input type="text" id="input-endereco-origem" placeholder="Ex: Av. Brasil" /> 
                     <small style="color: #666; margin-top: 5px;">Selecione uma sugestão da lista.</small>
@@ -1226,14 +1230,14 @@
                     <label for="choice-dest-auto">Digitar endereço</label>
                     
                     <input type="radio" id="choice-dest-map" name="destination-choice" value="map">
-                    <label for="choice-dest-map">Selecionar no Mapa</label>
+                    <label for="choice-dest-map">Selecionar no mapa</label> <!-- AJUSTADO para consistência -->
                 </div>
             </div>
             
             <!-- BLOCO DE AUTOCOMPLETE (Destino) com Número Adicionado -->
             <div id="destination-autocomplete-block" class="input-block">
                 <div class="form-group">
-                    <label for="input-endereco-destino">Digite a Rua/Avenida (Será autocompletado):</label>
+                    <label for="input-endereco-destino">Informe a Rua/Avenida:</label>
                     <input type="text" id="input-endereco-destino" placeholder="Ex: Av. Rio Branco" />
                     <small style="color: #666; margin-top: 5px;">Selecione uma sugestão da lista.</small>
                 </div>
