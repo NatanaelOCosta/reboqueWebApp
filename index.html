@@ -268,6 +268,7 @@
         // =================================================================
         // ATENÇÃO: CHAVE DE API DO GOOGLE MAPS
         // =================================================================
+        // Se você pretende usar este código fora do Canvas, substitua a chave abaixo.
         const API_KEY_GOOGLE = "AIzaSyBwd9QQquprtp9WM-M3KlzXe6rOKAy41Ns";
         
         // Coordenadas da Base (R. Dom João VI, 6 - Santa Cruz, RJ)
@@ -282,7 +283,7 @@
         let isGoogleMapsReady = false;
         let currentMapMode = null; // 'ORIGIN' ou 'DESTINATION'
         const RIO_CENTER = { lat: -22.9068, lng: -43.1729 }; // Centro do Rio de Janeiro
-
+        
         // Função de callback chamada quando o script do Google Maps é carregado
         function initMap() {
             geocoder = new google.maps.Geocoder();
@@ -333,7 +334,7 @@
             // Restringe a busca a endereços
             const autocompleteOrigem = new google.maps.places.Autocomplete(inputOrigemAuto, {
                 componentRestrictions: { country: "br" }, 
-                fields: ["geometry", "formatted_address"],
+                fields: ["geometry", "formatted_address", "address_components"], 
                 types: ["address"] 
             });
             autocompleteOrigem.addListener('place_changed', () => handleAutocompletePlaceChanged(autocompleteOrigem, 'ORIGIN'));
@@ -342,12 +343,11 @@
             const inputDestinoAuto = document.getElementById('input-endereco-destino');
             const autocompleteDestino = new google.maps.places.Autocomplete(inputDestinoAuto, {
                 componentRestrictions: { country: "br" },
-                fields: ["geometry", "formatted_address"],
+                fields: ["geometry", "formatted_address", "address_components"],
                 types: ["address"] 
             });
             autocompleteDestino.addListener('place_changed', () => handleAutocompletePlaceChanged(autocompleteDestino, 'DESTINATION'));
             
-            // **IMPORTANTE**: Inicializa a visibilidade dos blocos AGORA que os marcadores existem.
             toggleOriginInput('auto'); 
             toggleDestinationInput('auto');
         }
@@ -372,12 +372,15 @@
             document.getElementById("origem").value = "";
             document.getElementById("destino").value = "";
             
-            // Novos inputs de número do Autocomplete
+            // Autocomplete Origem
             document.getElementById("numero-origem-auto").value = "";
             document.getElementById("input-endereco-origem").value = ""; 
+            document.getElementById("base-address-origem").value = ""; 
             
+            // Autocomplete Destino
             document.getElementById("numero-destino-auto").value = "";
             document.getElementById("input-endereco-destino").value = ""; 
+            document.getElementById("base-address-destino").value = ""; 
 
             document.getElementById("marca-moto").value = "";
             document.getElementById("modelo-moto").value = "";
@@ -474,47 +477,160 @@
                 });
             });
         }
-
         
-        // --- FUNÇÃO DE AUTOCOMPLETE PLACE CHANGED ---
+        // --- FIX: MELHORIA NA FUNÇÃO DE FORMATAÇÃO DE ENDEREÇO NO PADRÃO BR ---
+        
+        function formatAddressFromComponents(place, numero) {
+            let components = {};
+
+            // 1. Extrai componentes relevantes
+            for (const component of place.address_components) {
+                if (component.types.includes('route')) {
+                    components.route = component.long_name;
+                } else if (component.types.includes('sublocality_level_1')) {
+                    // Bairro (Prioridade 1: sublocality_level_1)
+                    components.sublocality = component.long_name;
+                } else if (!components.sublocality && component.types.includes('sublocality')) {
+                     // Bairro (Prioridade 2: sublocality genérico, menos comum no Brasil)
+                    components.sublocality = component.long_name;
+                } else if (component.types.includes('administrative_area_level_2')) {
+                    // Cidade/Município (administrative_area_level_2)
+                    components.city = component.long_name;
+                } else if (component.types.includes('administrative_area_level_1')) {
+                    // Estado/UF
+                    components.state = component.short_name; 
+                } else if (component.types.includes('postal_code')) {
+                    components.zip = component.long_name;
+                }
+            }
+            
+            // 2. Define Fallbacks caso não encontre
+            const logradouro = components.route || place.formatted_address.split(',')[0].trim(); 
+            const bairro = components.sublocality || "Bairro Não Informado";
+            const cidade = components.city || "Cidade Não Informada";
+            const estado = components.state || "UF";
+            const cep = components.zip || "CEP Não Informado";
+
+            // 3. Formato Padrão Brasileiro (Rua, Número - Bairro, Cidade - UF, CEP)
+            let enderecoFormatado = `${logradouro}, ${numero} - ${bairro}, ${cidade} - ${estado}, ${cep}`;
+            
+            return enderecoFormatado;
+        }
+
+        // --- FUNÇÃO PARA ATUALIZAR O CAMPO VISÍVEL DE ORIGEM ---
+        function updateOriginDisplayAddress() {
+            const baseAddressComponents = document.getElementById('base-address-origem').value;
+            const numero = document.getElementById('numero-origem-auto').value.trim();
+            const origemField = document.getElementById('origem');
+
+            // Verifica se está no modo Autocomplete e se o endereço base foi selecionado
+            if (document.querySelector('input[name="origin-choice"]:checked').value !== 'auto' || !baseAddressComponents) {
+                return;
+            }
+
+            if (baseAddressComponents && numero) {
+                try {
+                    const place = JSON.parse(baseAddressComponents);
+                    const formatted = formatAddressFromComponents(place, numero);
+
+                    // Preenche o campo final SEM o sufixo (AUTOCOMPLETADO)
+                    origemField.value = formatted; 
+                    origemField.style.fontWeight = 'bold';
+                    limparMensagemErro(); 
+                } catch (e) {
+                    console.error("Erro ao processar JSON de endereço base:", e);
+                    origemField.value = "Erro ao formatar endereço. Tente novamente.";
+                    origemField.style.fontWeight = 'normal';
+                }
+
+            } else if (baseAddressComponents && !numero) {
+                // Endereço base selecionado, mas faltando o número
+                origemField.value = `Endereço selecionado. Por favor, informe o número.`;
+                origemField.style.fontWeight = 'normal';
+            } else {
+                 // Caso o usuário apague tudo
+                 origemField.value = "";
+                 origemField.placeholder = "Selecione a rua e depois informe o número no campo acima.";
+                 origemField.style.fontWeight = 'normal';
+            }
+        }
+        
+        // --- FUNÇÃO PARA ATUALIZAR O CAMPO VISÍVEL DE DESTINO ---
+        function updateDestinationDisplayAddress() {
+            const baseAddressComponents = document.getElementById('base-address-destino').value;
+            const numero = document.getElementById('numero-destino-auto').value.trim();
+            const destinoField = document.getElementById('destino');
+
+            // Verifica se está no modo Autocomplete e se o endereço base foi selecionado
+            if (document.querySelector('input[name="destination-choice"]:checked').value !== 'auto' || !baseAddressComponents) {
+                return;
+            }
+
+            if (baseAddressComponents && numero) {
+                try {
+                    const place = JSON.parse(baseAddressComponents);
+                    const formatted = formatAddressFromComponents(place, numero);
+
+                    // Preenche o campo final SEM o sufixo (AUTOCOMPLETADO)
+                    destinoField.value = formatted; 
+                    destinoField.style.fontWeight = 'bold';
+                    limparMensagemErro(); 
+                } catch (e) {
+                    console.error("Erro ao processar JSON de endereço base:", e);
+                    destinoField.value = "Erro ao formatar endereço. Tente novamente.";
+                    destinoField.style.fontWeight = 'normal';
+                }
+
+            } else if (baseAddressComponents && !numero) {
+                // Endereço base selecionado, mas faltando o número
+                destinoField.value = `Endereço selecionado. Por favor, informe o número.`;
+                destinoField.style.fontWeight = 'normal';
+            } else {
+                 // Caso o usuário apague tudo
+                 destinoField.value = "";
+                 destinoField.placeholder = "Selecione a rua e depois informe o número no campo acima.";
+                 destinoField.style.fontWeight = 'normal';
+            }
+        }
+
+
+        // --- FUNÇÃO DE AUTOCOMPLETE PLACE CHANGED (FIX UX) ---
         function handleAutocompletePlaceChanged(autocomplete, mode) {
             const place = autocomplete.getPlace();
             
-            if (!place.geometry) {
-                mostrarMensagemErro(`❌ Não foi possível encontrar a geometria para o endereço selecionado.`);
+            // CORREÇÃO CRÍTICA: Verifica se o objeto place é válido e tem geometria
+            if (!place || !place.geometry || !place.address_components) {
+                mostrarMensagemErro(`❌ Não foi possível encontrar a geometria ou componentes para o endereço selecionado.`);
                 return;
             }
             
             const lat = place.geometry.location.lat();
             const lon = place.geometry.location.lng();
-            const address = place.formatted_address;
             
-            let addressField, coordLatField, coordLonField;
-
-            if (mode === 'ORIGIN') {
-                addressField = document.getElementById('origem');
-                coordLatField = document.getElementById('coord-origem-lat');
-                coordLonField = document.getElementById('coord-origem-lon');
-                // Limpa o campo de número do Autocomplete (se tiver algum valor parcial)
-                document.getElementById("numero-origem-auto").value = ""; 
-                
-            } else { // DESTINATION
-                addressField = document.getElementById('destino');
-                coordLatField = document.getElementById('coord-destino-lat');
-                coordLonField = document.getElementById('coord-destino-lon');
-                 document.getElementById("numero-destino-auto").value = "";
-            }
-
-            // Define as coordenadas definitivas (o cálculo usará estas)
+            // Guarda as coordenadas definitivas (o cálculo usará estas)
+            const coordLatField = mode === 'ORIGIN' ? document.getElementById('coord-origem-lat') : document.getElementById('coord-destino-lat');
+            const coordLonField = mode === 'ORIGIN' ? document.getElementById('coord-origem-lon') : document.getElementById('coord-destino-lon');
+            const baseAddressField = mode === 'ORIGIN' ? document.getElementById('base-address-origem') : document.getElementById('base-address-destino');
+            
             coordLatField.value = lat;
             coordLonField.value = lon;
             
-            // Atualiza o campo principal com o endereço formatado (SEM O NÚMERO)
-            addressField.value = `${address} (AUTOCOMPLETADO)`;
-            addressField.style.fontWeight = 'bold';
-            
-            // Limpa o campo Autocomplete de rua após a seleção para evitar confusão no input principal
-            autocomplete.get('input').value = ""; 
+            // SALVA O OBJETO PLACE COMO JSON NO CAMPO HIDDEN
+            baseAddressField.value = JSON.stringify(place);
+
+            // FIX UX: NÃO LIMPA O CAMPO DO AUTOCOMPLETE. APENAS PREENCHE COM O ENDEREÇO FORMATADO DA RUA/AV.
+            const inputElement = autocomplete.get('input') || (mode === 'ORIGIN' ? document.getElementById('input-endereco-origem') : document.getElementById('input-endereco-destino'));
+            if(inputElement) {
+                // Tenta manter apenas o nome da rua que foi selecionada
+                inputElement.value = place.name || place.formatted_address.split(',')[0].trim();
+            }
+
+            // Chama a função para atualizar o campo de exibição, que agora depende do número
+            if (mode === 'ORIGIN') {
+                updateOriginDisplayAddress();
+            } else {
+                updateDestinationDisplayAddress();
+            }
 
             // Limpa qualquer erro
             limparMensagemErro();
@@ -576,15 +692,17 @@
                 origemAddress = document.getElementById("origem").value; 
                 destinoAddress = document.getElementById("destino").value; 
 
-                if (!origemAddress || origemAddress.includes("Selecione a Origem")) throw new Error("Defina o endereço de Origem primeiro.");
-                if (!destinoAddress || destinoAddress.includes("Selecione o Destino")) throw new Error("Defina o endereço de Destino primeiro.");
+                // FIX: Mudança na validação do endereço
+                if (!origemAddress || origemAddress.includes("Selecione a Origem") || origemAddress.includes("Endereço selecionado")) throw new Error("Defina o endereço de Origem completo primeiro (selecione a rua e informe o número).");
+                if (!destinoAddress || destinoAddress.includes("Selecione o Destino") || destinoAddress.includes("Endereço selecionado")) throw new Error("Defina o endereço de Destino completo primeiro (selecione a rua e informe o número).");
+
 
                 if (tipoVeiculo === "15") {
                     cilindrada = parseInt(document.getElementById("cilindrada-moto").value);
                     if (isNaN(cilindrada)) throw new Error("Informe a cilindrada da moto.");
                 }
                 
-                // 2. Determinar Coordenadas de Origem (Apenas Autocomplete, Mapa ou Geo são válidos)
+                // 2. Determinar Coordenadas de Origem 
                 const savedLonOrigem = parseFloat(document.getElementById("coord-origem-lon").value);
                 const savedLatOrigem = parseFloat(document.getElementById("coord-origem-lat").value);
                 const currentOriginMode = document.querySelector('input[name="origin-choice"]:checked').value;
@@ -593,20 +711,21 @@
                 if (!isNaN(savedLonOrigem) && !isNaN(savedLatOrigem)) {
                     coordOrigem = new google.maps.LatLng(savedLatOrigem, savedLonOrigem);
                     
-                    // Tratamento do Endereço para WhatsApp
-                    origemAddress = origemAddress.replace(/\(CONFIRMADO\)/g, '').replace('(LOCALIZAÇÃO ATUAL)', '').replace('(AUTOCOMPLETADO)', '').trim();
+                    // Tratamento do Endereço para WhatsApp (usa o valor final, mas limpa tags)
+                    origemAddress = origemAddress.replace(/\(CONFIRMADO\)/g, '').replace('(LOCALIZAÇÃO ATUAL)', '').trim();
                     
                     if (currentOriginMode === 'auto') {
-                        const numeroAuto = document.getElementById("numero-origem-auto").value;
-                        if (!numeroAuto) throw new Error("Informe o número do endereço de Origem (por texto).");
-                        origemAddress = `${origemAddress}, Nº ${numeroAuto}`;
+                        // Endereço já está formatado
+                    } else if (currentOriginMode === 'geo') {
+                         // Adiciona aviso de que a localização atual pode ser imprecisa
+                        origemAddress = `${origemAddress} (Atenção: Endereço obtido via GPS)`;
                     }
 
                 } else {
                     throw new Error("As coordenadas de Origem não foram definidas. Use um dos métodos acima.");
                 }
 
-                // 3. Determinar Coordenadas de Destino (Apenas Autocomplete ou Mapa são válidos)
+                // 3. Determinar Coordenadas de Destino
                 const savedDestLon = parseFloat(document.getElementById("coord-destino-lon").value);
                 const savedDestLat = parseFloat(document.getElementById("coord-destino-lat").value);
                 const currentDestinationMode = document.querySelector('input[name="destination-choice"]:checked').value;
@@ -615,12 +734,10 @@
                     coordDestino = new google.maps.LatLng(savedDestLat, savedDestLon);
                     
                     // Tratamento do Endereço para WhatsApp
-                    destinoAddress = destinoAddress.replace(/\(CONFIRMADO\)/g, '').replace('(AUTOCOMPLETADO)', '').trim();
+                    destinoAddress = destinoAddress.replace(/\(CONFIRMADO\)/g, '').trim();
                     
                     if (currentDestinationMode === 'auto') {
-                        const numeroAuto = document.getElementById("numero-destino-auto").value;
-                        if (!numeroAuto) throw new Error("Informe o número do endereço de Destino (por texto).");
-                        destinoAddress = `${destinoAddress}, Nº ${numeroAuto}`;
+                        // Endereço já está formatado
                     }
 
                 } else {
@@ -676,10 +793,8 @@
 
                 if (userMessage.includes("Rota não encontrada")) {
                     userMessage = `Não foi possível traçar a rota. Verifique a precisão dos endereços.`;
-                } else if (userMessage.includes("Informe o número")) {
-                     // Mantém a mensagem de erro específica
                 } else {
-                    userMessage = `Falha geral no cálculo: ${userMessage}`;
+                    userMessage = `Falha no cálculo: ${userMessage}`;
                 }
 
                 mostrarMensagemErro(`❌ Erro: ${userMessage}`); 
@@ -744,15 +859,13 @@
             autoBlock.style.display = 'none'; 
 
             // Expressão que define se o campo principal (origem) tem coordenadas (geo, mapa, auto)
-            const isCoordSet = origemField.value.includes("(CONFIRMADO)") || 
-                               origemField.value.includes("(LOCALIZAÇÃO ATUAL)") || 
-                               origemField.value.includes("(AUTOCOMPLETADO)");
+            const isCoordSet = document.getElementById("coord-origem-lat").value !== "";
 
             // 2. Limpa Coordenadas Salvas e Endereço de Exibição
-            // Se estiver mudando de um modo baseado em coordenadas (map/geo/auto) para outro, limpa as coordenadas para forçar a nova definição.
             if (isCoordSet) {
                 document.getElementById("coord-origem-lon").value = "";
                 document.getElementById("coord-origem-lat").value = "";
+                document.getElementById("base-address-origem").value = ""; // Limpa endereço base
                 origemField.style.fontWeight = 'normal';
                 origemField.value = "";
             }
@@ -766,6 +879,9 @@
             if (choice === 'geo') {
                 geoBlock.style.display = 'block';
                 origemField.placeholder = "Endereço gerado após obter Localização Atual";
+                // Limpa inputs de Autocomplete ao mudar de modo
+                document.getElementById("numero-origem-auto").value = "";
+                document.getElementById("input-endereco-origem").value = "";
 
             } else if (choice === 'map') {
                 // Ativa o modo Mapa
@@ -785,10 +901,17 @@
                 
                 mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 origemField.placeholder = "Endereço definido pelo mapa (Aguardando Confirmação)";
+                // Limpa inputs de Autocomplete ao mudar de modo
+                document.getElementById("numero-origem-auto").value = "";
+                document.getElementById("input-endereco-origem").value = "";
+
 
             } else if (choice === 'auto') { // NOVO MODO AUTOCOMPLETE
                 autoBlock.style.display = 'block';
-                origemField.placeholder = "Endereço gerado após selecionar a sugestão";
+                origemField.placeholder = "Endereço completo será gerado após selecionar a rua e informar o número.";
+                // Limpa inputs de Geo
+                document.getElementById("coord-origem-lon").value = "";
+                document.getElementById("coord-origem-lat").value = "";
             }
         }
         
@@ -805,13 +928,13 @@
             autoBlock.style.display = 'none'; 
             
             // Expressão que define se o campo principal (destino) tem coordenadas (mapa, auto)
-            const isCoordSet = destinoField.value.includes("(CONFIRMADO)") || 
-                               destinoField.value.includes("(AUTOCOMPLETADO)");
+            const isCoordSet = destinoField.style.fontWeight === 'bold';
 
             // 2. Limpa Coordenadas Salvas e Endereço de Exibição
             if (isCoordSet) {
                 document.getElementById("coord-destino-lon").value = "";
                 document.getElementById("coord-destino-lat").value = "";
+                document.getElementById("base-address-destino").value = ""; // Limpa endereço base
                 destinoField.style.fontWeight = 'normal';
                 destinoField.value = "";
             }
@@ -843,10 +966,13 @@
                 
                 mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 destinoField.placeholder = "Endereço definido pelo mapa (Aguardando Confirmação)";
+                // Limpa inputs de Autocomplete ao mudar de modo
+                document.getElementById("numero-destino-auto").value = "";
+                document.getElementById("input-endereco-destino").value = "";
 
             } else if (choice === 'auto') { // NOVO MODO AUTOCOMPLETE
                 autoBlock.style.display = 'block';
-                destinoField.placeholder = "Endereço gerado após selecionar a sugestão";
+                destinoField.placeholder = "Endereço completo será gerado após selecionar a rua e informar o número.";
             }
         }
 
@@ -871,6 +997,7 @@
                     // Limpar inputs de Autocomplete ao usar mapa
                     document.getElementById("numero-origem-auto").value = "";
                     document.getElementById("input-endereco-origem").value = "";
+                    document.getElementById("base-address-origem").value = "";
                     
                 } else { // 'DESTINATION'
                     marker = destinationMarker;
@@ -881,6 +1008,7 @@
                     // Limpar inputs de Autocomplete ao usar mapa
                     document.getElementById("numero-destino-auto").value = "";
                     document.getElementById("input-endereco-destino").value = "";
+                    document.getElementById("base-address-destino").value = "";
                 }
 
                 // 1. Atualiza o Marcador
@@ -947,9 +1075,10 @@
                 document.getElementById("origem").value = `(LOCALIZAÇÃO ATUAL) ${enderecoTexto}`;
                 document.getElementById("origem").style.fontWeight = 'bold';
                 
+                // Limpa inputs de Autocomplete
                 document.getElementById("numero-origem-auto").value = "";
                 document.getElementById("input-endereco-origem").value = "";
-
+                document.getElementById("base-address-origem").value = ""; // Limpa endereço base
 
             } catch (error) {
                 let msg = "Erro ao obter localização. Verifique as permissões do navegador.";
@@ -975,9 +1104,14 @@
             document.getElementById("btn-calcular").addEventListener("click", calcular);
             document.getElementById("btn-nova-consulta").addEventListener("click", resetForm); 
             
-            // Listeners removidos: btn-buscar-origem-cep e btn-buscar-destino-cep
             document.getElementById("btn-usar-localizacao").addEventListener("click", usarLocalizacaoAtual);
             document.getElementById("btn-confirmar-mapa").addEventListener("click", confirmMapSelection);
+            
+            // Listener para o campo de número da Origem (PARA ATUALIZAR O CAMPO VISÍVEL)
+            document.getElementById("numero-origem-auto").addEventListener("input", updateOriginDisplayAddress);
+            // Listener para o campo de número do Destino (PARA ATUALIZAR O CAMPO VISÍVEL)
+            document.getElementById("numero-destino-auto").addEventListener("input", updateDestinationDisplayAddress);
+
             
             // Listener para o Radio Group (Alternância de Origem)
             document.querySelectorAll('input[name="origin-choice"]').forEach(radio => {
@@ -1026,11 +1160,13 @@
         
         <div id="mensagem-erro" class="mensagem-erro" style="display: none;"></div>
         
-        <!-- CAMPOS HIDDEN PARA SALVAR COORDENADAS -->
+        <!-- CAMPOS HIDDEN PARA SALVAR COORDENADAS E ENDEREÇO BASE -->
         <input type="hidden" id="coord-origem-lon" value="" />
         <input type="hidden" id="coord-origem-lat" value="" />
+        <input type="hidden" id="base-address-origem" value="" /> <!-- Armazena o objeto Place (JSON) -->
         <input type="hidden" id="coord-destino-lon" value="" />
         <input type="hidden" id="coord-destino-lat" value="" />
+        <input type="hidden" id="base-address-destino" value="" /> <!-- Armazena o objeto Place (JSON) -->
 
         <section class="section endereco-section">
             <h2>Local do Veículo (Origem)</h2>
@@ -1039,7 +1175,7 @@
                 <label>Como deseja informar a Origem?</label>
                 <div class="radio-group">
                     <input type="radio" id="choice-origem-auto" name="origin-choice" value="auto" checked>
-                    <label for="choice-origem-auto">Endereço por Texto</label>
+                    <label for="choice-origem-auto">Digitar endereço</label>
                     
                     <input type="radio" id="choice-origem-geo" name="origin-choice" value="geo">
                     <label for="choice-origem-geo">Localização Atual</label>
@@ -1053,12 +1189,14 @@
             <div id="origin-autocomplete-block" class="input-block">
                 <div class="form-group">
                     <label for="input-endereco-origem">Digite a Rua/Avenida (Será autocompletado):</label>
-                    <input type="text" id="input-endereco-origem" placeholder="Ex: Av. Brasil" />
+                    <!-- O valor permanecerá aqui após a seleção -->
+                    <input type="text" id="input-endereco-origem" placeholder="Ex: Av. Brasil" /> 
                     <small style="color: #666; margin-top: 5px;">Selecione uma sugestão da lista.</small>
                 </div>
                 <div class="form-group">
                     <label for="numero-origem-auto">Número:</label>
                     <input type="number" id="numero-origem-auto" placeholder="Número do endereço (Obrigatório)" required />
+                    <small style="color: #666; margin-top: 5px;">O endereço completo formatado aparecerá no campo abaixo.</small>
                 </div>
             </div>
 
@@ -1075,7 +1213,8 @@
             <!-- CAMPO DE ENDEREÇO RESULTANTE (comum aos métodos) -->
             <div class="form-group">
                 <label for="origem">Endereço de Origem (Gerado automaticamente):</label>
-                <input disabled type="text" id="origem" placeholder="Selecione a Origem" autocomplete="street-address" />
+                <!-- Este campo agora mostra a formatação correta e sem o sufixo (AUTOCOMPLETADO) -->
+                <input disabled type="text" id="origem" placeholder="Endereço completo será gerado após selecionar a rua e informar o número." autocomplete="street-address" />
             </div>
         </section>
 
@@ -1086,7 +1225,7 @@
                 <label>Como deseja informar o Destino?</label>
                 <div class="radio-group">
                     <input type="radio" id="choice-dest-auto" name="destination-choice" value="auto" checked>
-                    <label for="choice-dest-auto">Endereço por Texto</label>
+                    <label for="choice-dest-auto">Digitar endereço</label>
                     
                     <input type="radio" id="choice-dest-map" name="destination-choice" value="map">
                     <label for="choice-dest-map">Selecionar no Mapa</label>
@@ -1103,6 +1242,7 @@
                 <div class="form-group">
                     <label for="numero-destino-auto">Número:</label>
                     <input type="number" id="numero-destino-auto" placeholder="Número do endereço (Obrigatório)" required />
+                    <small style="color: #666; margin-top: 5px;">O endereço completo formatado aparecerá no campo abaixo.</small>
                 </div>
             </div>
 
@@ -1111,7 +1251,8 @@
             
             <div class="form-group" style="margin-top: 15px;">
                 <label for="destino">Endereço de destino (Gerado automaticamente):</label>
-                <input disabled type="text" id="destino" placeholder="Selecione o Destino" autocomplete="address-line1" />
+                <!-- Este campo agora mostra a formatação correta e sem o sufixo (AUTOCOMPLETADO) -->
+                <input disabled type="text" id="destino" placeholder="Endereço completo será gerado após selecionar a rua e informar o número." autocomplete="address-line1" />
             </div>
             
             <div class="form-group">
@@ -1149,11 +1290,11 @@
         <!-- FIM SEÇÃO DE INTERAÇÃO COM O MAPA -->
 
         <section class="section acao-section">
-            <button id="btn-calcular" type="button">Calcular valor</button>
+            <button id="btn-calcular" type="button">Calcular Valor</button>
         </section>
 
         <section class="section resultado-section" aria-live="polite" aria-atomic="true">
-            <div id="resultado">Preencha todos os campos e clique em CALCULAR.</div>
+            <div id="resultado">Preencha todos os campos e clique em Calcular Valor.</div>
         </section>
 
         <section class="section whatsapp-section">
